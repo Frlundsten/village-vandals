@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-user-resource
+      author: f
+      changes:
+        - createTable:
+            tableName: user_resource
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 002-create-village-resource
+      author: f
+      changes:
+        - createTable:
+            tableName: village_resource
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: x_coordinate
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: y_coordinate
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: village_resource
+            baseColumnNames: user_id
+            constraintName: fk_village_user
+            referencedTableName: user_resource
+            referencedColumnNames: id
+            onDelete: CASCADE
