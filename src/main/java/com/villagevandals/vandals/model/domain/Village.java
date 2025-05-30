@@ -1,9 +1,11 @@
 package com.villagevandals.vandals.model.domain;
 
 public class Village {
-  private int xCoordinate;
-  private int yCoordinate;
-  private User owner;
+  private final int xCoordinate;
+  private final int yCoordinate;
+  private final User owner;
+  private ResourceStorage storage;
+  private ResourceProduction production;
 
   public Village(Builder builder) {
     this.xCoordinate = builder.x;
@@ -33,10 +35,20 @@ public class Village {
     return yCoordinate;
   }
 
+  public ResourceStorage getStorage() {
+    return storage;
+  }
+
+  public ResourceProduction getProduction() {
+    return production;
+  }
+
   public static class Builder {
     private User owner;
     private int x;
     private int y;
+    private ResourceStorage storage = new ResourceStorage();
+    private ResourceProduction production = new ResourceProduction();
 
     public Builder startingVillage(User owner) {
       this.owner = owner;
@@ -53,11 +65,24 @@ public class Village {
       return 1;
     }
 
+    public Builder storage(ResourceStorage storage) {
+      this.storage = storage;
+      return this;
+    }
+
+    public Builder production(ResourceProduction production) {
+      this.production = production;
+      return this;
+    }
+
     public Village build() {
       if (owner == null) {
         throw new IllegalStateException("Owner must be set");
       }
-      return new Village(this);
+      Village village = new Village(this);
+      village.storage = this.storage;
+      village.production = this.production;
+      return village;
     }
   }
 }
