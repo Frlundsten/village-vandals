@@ -26,7 +26,61 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 002-create-village-resource
+      id: 002-create-building
+      author: f
+      changes:
+        - createTable:
+            tableName: building
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: building_type
+                  type: VARCHAR(31)
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+              - column:
+                  name: level
+                  type: INT
+                  defaultValueNumeric: "1"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 003-create-lumber-mill
+      author: f
+      changes:
+        - createTable:
+            tableName: lumber_mill
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: production_rate
+                  type: INT
+                  defaultValueNumeric: "20"
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: lumber_mill
+            baseColumnNames: id
+            constraintName: fk_lumber_mill_building
+            referencedTableName: building
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 004-create-village-resource
       author: f
       changes:
         - createTable:
@@ -54,6 +108,54 @@ databaseChangeLog:
                   type: BIGINT
                   constraints:
                     nullable: false
+              - column:
+                  name: wood
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stone
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: iron
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: crop
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_update
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: wood_per_hour
+                  type: INT
+                  defaultValueNumeric: "3600"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: clay_per_hour
+                  type: INT
+                  defaultValueNumeric: "3600"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: iron_per_hour
+                  type: INT
+                  defaultValueNumeric: "3600"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: crop_per_hour
+                  type: INT
+                  defaultValueNumeric: "3600"
+                  constraints:
+                    nullable: false
 
         - addForeignKeyConstraint:
             baseTableName: village_resource
@@ -62,3 +164,36 @@ databaseChangeLog:
             referencedTableName: user_resource
             referencedColumnNames: id
             onDelete: CASCADE
+
+  - changeSet:
+      id: 005-construction-site
+      author: f
+      changes:
+        - createTable:
+            tableName: construction_site
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: building_type
+                  type: VARCHAR(255)
+              - column:
+                  name: village_resource_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_village_resource
+                    references: village_resource(id)
+              - column:
+                  name: building_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    unique: true
+                    foreignKeyName: fk_building
+                    references: building(id)
