@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping("/register")
 public class StarterController {
-  Logger logger = LoggerFactory.getLogger(StarterController.class);
-
   RegistrationService registrationService;
 
   public StarterController(RegistrationService registrationService) {
@@ -27,7 +25,6 @@ public class StarterController {
 
   @PostMapping("/user")
   public String register(@RequestParam String username, @RequestParam String password) {
-    logger.info("Registering user " + username + " with password " + password);
     registrationService.newUser(username, password);
     return "redirect:/login?registered";
   }
