@@ -1,7 +1,5 @@
 package com.villagevandals.vandals.controller.login;
 
-import static com.villagevandals.vandals.repository.user.UserResource.toUser;
-
 import com.villagevandals.vandals.repository.user.UserRepository;
 import com.villagevandals.vandals.repository.user.UserResource;
 import jakarta.transaction.Transactional;
@@ -13,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-  private final UserRepository userRepository; // your JPA repo for users
+  private final UserRepository userRepository;
 
   public CustomUserDetailsService(UserRepository userRepository) {
     this.userRepository = userRepository;
@@ -27,7 +25,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             .findByUsername(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-    var user = toUser(resource);
+    var user = UserResource.toUser(resource);
 
     return org.springframework.security.core.userdetails.User.withUsername(user.username())
         .password(user.passwordHash())
