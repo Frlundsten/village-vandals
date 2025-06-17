@@ -19,6 +19,14 @@ public class Village {
     this.owner = owner;
   }
 
+  public Village(int xCoordinate, int yCoordinate, User owner, ResourceStorage storage, ResourceProduction production) {
+    this.xCoordinate = xCoordinate;
+    this.yCoordinate = yCoordinate;
+    this.owner = owner;
+    this.storage = storage;
+    this.production = production;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
