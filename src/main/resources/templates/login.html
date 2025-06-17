@@ -2,22 +2,55 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
 <head>
     <title>Please Log In</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            background-color: #f9f9f9;
+        }
+        .login-container {
+            text-align: center;
+            padding: 2rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 80%;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+        }
+        input[type="submit"] {
+            padding: 0.5rem 1rem;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
-<body >
-<h1>Please Log In</h1>
-<div th:if="${param.error}">
-    Invalid username and password.</div>
-<div th:if="${param.logout}">
-    You have been logged out.</div>
-<form th:action="@{/login}" method="post">
-    <div>
-        <input type="text" name="username" placeholder="Username"/>
+<body>
+<div class="login-container">
+    <h1>Please Log In</h1>
+    <div th:if="${param.error}">
+        <p style="color: red;">Invalid username and password.</p>
     </div>
-    <div>
-        <input type="password" name="password" placeholder="Password"/>
+    <div th:if="${param.logout}">
+        <p style="color: green;">You have been logged out.</p>
     </div>
-    <input type="submit" value="Log in" />
-</form>
-<p>Don't have an account? <a th:href="@{/register}">Register here</a>.</p>
+    <form th:action="@{/login}" method="post">
+        <div>
+            <input type="text" name="username" placeholder="Username"/>
+        </div>
+        <div>
+            <input type="password" name="password" placeholder="Password"/>
+        </div>
+        <input type="submit" value="Log in" />
+    </form>
+    <p>Don't have an account? <a th:href="@{/register}">Register here</a>.</p>
+</div>
 </body>
 </html>
