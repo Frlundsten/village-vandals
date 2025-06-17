@@ -1,7 +1,6 @@
 package com.villagevandals.vandals.repository.user;
 
-import static com.villagevandals.vandals.repository.village.VillageResource.toVillage;
-
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.villagevandals.vandals.model.domain.User;
 import com.villagevandals.vandals.model.domain.Village;
 import com.villagevandals.vandals.repository.village.VillageResource;
@@ -31,7 +30,7 @@ public class UserResource {
     User user = new User(resource.username, resource.passwordHash, new ArrayList<>());
     List<Village> villages =
         resource.villages.stream()
-            .map(villageResource -> toVillage(villageResource, user))
+            .map(villageResource -> villageResource.toVillage(villageResource, user))
             .toList();
 
     return new User(resource.username, resource.passwordHash, villages);
@@ -46,5 +45,23 @@ public class UserResource {
             .map(village -> new VillageResource(village.getX(), village.getY(), userResource))
             .toList();
     return userResource;
+  }
+
+  public List<VillageResource> getVillages() {
+    return villages;
+  }
+
+  public Long getId() {
+    return id;
+  }
+
+  @Override
+  public String toString() {
+    return "UserResource{" +
+            "id=" + id +
+            ", username='" + username + '\'' +
+            ", passwordHash='" + passwordHash + '\'' +
+            ", villages=" + villages +
+            '}';
   }
 }
