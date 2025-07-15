@@ -1,15 +1,14 @@
 databaseChangeLog:
   - changeSet:
-      id: 001-create-user-resource
+      id: 001-create-user-table
       author: f
       changes:
         - createTable:
-            tableName: user_resource
+            tableName: users
             columns:
               - column:
                   name: id
-                  type: BIGINT
-                  autoIncrement: true
+                  type: UUID
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -20,10 +19,19 @@ databaseChangeLog:
                     nullable: false
                     unique: true
               - column:
-                  name: password_hash
+                  name: password
                   type: VARCHAR(255)
                   constraints:
                     nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: roles
+                  type: VARCHAR(255)
 
   - changeSet:
       id: 002-create-building
@@ -80,11 +88,11 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: 004-create-village-resource
+      id: 004-create-village-table
       author: f
       changes:
         - createTable:
-            tableName: village_resource
+            tableName: village
             columns:
               - column:
                   name: id
@@ -105,7 +113,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: user_id
-                  type: BIGINT
+                  type: UUID
                   constraints:
                     nullable: false
               - column:
@@ -158,10 +166,10 @@ databaseChangeLog:
                     nullable: false
 
         - addForeignKeyConstraint:
-            baseTableName: village_resource
+            baseTableName: village
             baseColumnNames: user_id
             constraintName: fk_village_user
-            referencedTableName: user_resource
+            referencedTableName: users
             referencedColumnNames: id
             onDelete: CASCADE
 
@@ -183,17 +191,28 @@ databaseChangeLog:
                   name: building_type
                   type: VARCHAR(255)
               - column:
-                  name: village_resource_id
+                  name: village_id
                   type: BIGINT
                   constraints:
                     nullable: false
-                    foreignKeyName: fk_village_resource
-                    references: village_resource(id)
               - column:
                   name: building_id
                   type: BIGINT
                   constraints:
                     nullable: true
                     unique: true
-                    foreignKeyName: fk_building
-                    references: building(id)
+
+        - addForeignKeyConstraint:
+            baseTableName: construction_site
+            baseColumnNames: village_id
+            constraintName: fk_construction_site_village
+            referencedTableName: village
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: construction_site
+            baseColumnNames: building_id
+            constraintName: fk_construction_site_building
+            referencedTableName: building
+            referencedColumnNames: id
