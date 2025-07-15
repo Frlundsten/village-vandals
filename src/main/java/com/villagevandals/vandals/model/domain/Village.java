@@ -1,11 +1,25 @@
 package com.villagevandals.vandals.model.domain;
 
+import com.villagevandals.vandals.controller.village.VillageDTO;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+
+@Entity
 public class Village {
-  private final int xCoordinate;
-  private final int yCoordinate;
-  private final User owner;
-  private ResourceStorage storage;
-  private ResourceProduction production;
+  public Village() {}
+
+  public Village(int xCoordinate, int yCoordinate, User owner) {
+    this.xCoordinate = xCoordinate;
+    this.yCoordinate = yCoordinate;
+    this.storage = new ResourceStorage();
+    this.production = new ResourceProduction();
+    this.owner = owner;
+  }
 
   public Village(Builder builder) {
     this.xCoordinate = builder.x;
@@ -13,13 +27,27 @@ public class Village {
     this.owner = builder.owner;
   }
 
-  public Village(int xCoordinate, int yCoordinate, User owner) {
-    this.xCoordinate = xCoordinate;
-    this.yCoordinate = yCoordinate;
-    this.owner = owner;
-  }
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-  public Village(int xCoordinate, int yCoordinate, User owner, ResourceStorage storage, ResourceProduction production) {
+  private int xCoordinate;
+  private int yCoordinate;
+
+  @ManyToOne
+  @JoinColumn(name = "user_id")
+  private User owner;
+
+  @Embedded private ResourceStorage storage;
+
+  @Embedded private ResourceProduction production;
+
+  public Village(
+      int xCoordinate,
+      int yCoordinate,
+      User owner,
+      ResourceStorage storage,
+      ResourceProduction production) {
     this.xCoordinate = xCoordinate;
     this.yCoordinate = yCoordinate;
     this.owner = owner;
@@ -27,12 +55,16 @@ public class Village {
     this.production = production;
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public ResourceProduction getProduction() {
+    return production;
   }
 
-  public User getOwner() {
-    return owner;
+  public ResourceStorage getStorage() {
+    return storage;
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   public int getX() {
@@ -41,14 +73,6 @@ public class Village {
 
   public int getY() {
     return yCoordinate;
-  }
-
-  public ResourceStorage getStorage() {
-    return storage;
-  }
-
-  public ResourceProduction getProduction() {
-    return production;
   }
 
   public static class Builder {
@@ -92,5 +116,33 @@ public class Village {
       village.production = this.production;
       return village;
     }
+  }
+
+  @Override
+  public String toString() {
+    return "VillageResource{"
+        + "id="
+        + id
+        + ", xCoordinate="
+        + xCoordinate
+        + ", yCoordinate="
+        + yCoordinate
+        + ", storage="
+        + storage
+        + ", production="
+        + production
+        + '}';
+  }
+
+  public User getOwner() {
+    return owner;
+  }
+
+  public Long getId() {
+    return id;
+  }
+
+  public VillageDTO toDTO() {
+    return new VillageDTO(id, xCoordinate, yCoordinate, storage, production);
   }
 }
