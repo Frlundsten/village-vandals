@@ -1,8 +1,19 @@
 <script setup>
-import {RouterView} from 'vue-router'
+import {RouterView, useRouter} from 'vue-router'
 
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import Avatar from "@/components/Avatar.vue";
+
+import {useSessionStore} from '@/stores/pinia.js'
+import {storeToRefs} from "pinia";
+
+const session = useSessionStore()
+const router = useRouter()
+
+async function handleLogout() {
+  await session.logout()
+  await router.push('/login')
+}
 
 const player = ref({
   name: '',
@@ -22,41 +33,66 @@ const resources = ref({
   iron: 0,
 });
 
-const isLoggedIn = ref(false)
+const {token, isAuthenticated} = storeToRefs(session)
 
-onMounted(async () => {
+onMounted(() => {
+  if (isAuthenticated.value) {
+    loadUserData()
+  }
+})
+
+watch(isAuthenticated, (loggedIn) => {
+  if (loggedIn) {
+    loadUserData()
+  } else {
+    clearUserData()
+  }
+})
+
+async function loadUserData() {
   try {
     const response = await fetch('http://localhost:8080/user', {
-      credentials: 'include',
-    });
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
+      }
+    })
+    if (!response.ok) throw new Error('Failed to fetch user info')
 
-    const data = await response.json();
-
-    player.value.name = data.username;
-
-    currentVillage.value = data.villages[0];
+    const data = await response.json()
+    player.value.name = data.username
+    currentVillage.value = data.villages[0] || null
+    village.value.name = currentVillage.value?.name || ''
 
     if (currentVillage.value) {
-      await refreshStorage();
+      await refreshStorage()
     } else {
-      console.warn('No village found for user');
+      console.warn('No village found for user')
     }
-
-    isLoggedIn.value = true;
-  }catch (error) {
-    console.error('Failed to fetch user info:', error);
+  } catch (error) {
+    console.error('Failed to fetch user info:', error)
+    clearUserData()
+    await router.push("/login")
   }
-});
+}
+
+function clearUserData() {
+  player.value = {name: ''}
+  currentVillage.value = null
+  village.value = {name: '', buildings: []}
+  resources.value = {food: 0, wood: 0, stone: 0, iron: 0}
+}
 
 async function refreshStorage() {
   try {
+    if (!currentVillage.value) return
 
-    console.log(currentVillage.value)
     const villageId = currentVillage.value.id;
 
     const response = await fetch(`http://localhost:8080/resources/refresh?villageId=${villageId}`, {
       method: 'GET',
-      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
+      }
     });
 
     if (!response.ok) {
@@ -125,17 +161,13 @@ function goTo(section) {
 
     </header>
 
-    <!-- Main Content -->
     <div class="flex flex-1 overflow-hidden">
-      <!-- Sidebar -->
       <aside class="w-[12%] min-w-[120px] bg-base-100 p-4 shadow-inner overflow-y-auto">
         <ul class="menu rounded-box bg-base-200 w-full">
           <li>
             <RouterLink @click="refreshStorage" to="/village">🏘️️ Village</RouterLink>
           </li>
-          <li>
-            <RouterLink to="/buildings">🏗️ Buildings</RouterLink>
-          </li>
+          <li><a @click="goTo('buildings')">🏗️ Buildings</a></li>
           <li><a @click="goTo('army')">🛡️ Army</a></li>
           <li>
             <RouterLink to="/map">🗺️ World Map</RouterLink>
@@ -143,6 +175,7 @@ function goTo(section) {
           <li><a @click="goTo('reports')">📜 Reports</a></li>
           <li><a @click="goTo('messages')">✉️ Messages</a></li>
         </ul>
+        <button v-if="isAuthenticated" @click="handleLogout" class="btn btn-md w-full mt-4">Logout</button>
       </aside>
 
       <main class="flex-1 ">
