@@ -71,8 +71,13 @@ const tileHeight = 80
 
 onMounted(() => {
   // Calculate grid width and height in pixels using your isometric formulas
-  const gridPixelWidth = (gridSize - 1) * 40 * 2 // horizontal max distance between tiles (because getX uses (x - y) * 40)
-  const gridPixelHeight = (gridSize - 1) * 20 * 2 // vertical max distance between tiles (because getY uses (x + y) * 20)
+  const minX = getX((gridSize - 1)) // left-most
+  const maxX = getX(gridSize * (gridSize - 1)) // right-most
+  const minY = getY(0) // top-most
+  const maxY = getY(gridSize * gridSize - 1) // bottom-most
+
+  const gridPixelWidth = maxX - minX + tileWidth
+  const gridPixelHeight = maxY - minY + tileHeight
 
   // Calculate center of the viewport
   const wrapperRect = wrapperRef.value.getBoundingClientRect()
@@ -81,8 +86,8 @@ onMounted(() => {
 
   // Calculate translate to center the grid
   translate.value = {
-    x: centerX - gridPixelWidth / 2 - tileWidth / 2,
-    y: centerY - gridPixelHeight / 2 - tileHeight / 2,
+    x: (wrapperRect.width - gridPixelWidth) / 2 - minX,
+    y: (wrapperRect.height - gridPixelHeight) / 2 - minY,
   }
 })
 
