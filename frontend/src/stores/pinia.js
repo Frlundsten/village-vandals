@@ -1,28 +1,28 @@
-// stores/session.js
-import { defineStore } from 'pinia'
+import {defineStore} from "pinia";
 
 export const useSessionStore = defineStore('session', {
     state: () => ({
         user: null,
-        isAuthenticated: false,
+        token: localStorage.getItem('jwt_token'),
+        isAuthenticated: !!localStorage.getItem('jwt_token'),
     }),
 
     actions: {
-        async checkSession() {
-            try {
-                const response = await fetch('http://localhost:8080/user', {
-                    credentials: 'include',
-                });
-
-                if (!response.ok) throw new Error('Not authenticated');
-
-                const data = await response.json();
-                this.user = data;
-                this.isAuthenticated = true;
-            } catch (error) {
-                this.user = null;
-                this.isAuthenticated = false;
+        setToken(token) {
+            this.token = token;
+            this.isAuthenticated = !!token;
+            if (token) {
+                localStorage.setItem('jwt_token', token);
+            } else {
+                localStorage.removeItem('jwt_token');
             }
         },
+
+        async logout() {
+            this.user = null;
+            this.token = null;
+            this.isAuthenticated = false;
+            localStorage.removeItem('jwt_token');
+        },
     },
-});
+})
