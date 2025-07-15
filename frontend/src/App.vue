@@ -1,7 +1,4 @@
-<script setup>
-import Home from "@/views/Home.vue";
-</script>
-
 <template>
-       <Home/>
+  <router-view/>
+  <footer class="h-20"></footer>
 </template>
