@@ -1,5 +1,6 @@
 package com.villagevandals.vandals.repository.village;
 
+import com.villagevandals.vandals.model.domain.Village;
 import com.villagevandals.vandals.model.domain.buildings.Building;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -15,11 +16,11 @@ public class ConstructionSite {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private int id;
+  private Long id;
 
   @ManyToOne
-  @JoinColumn(name = "village_resource_id")
-  private VillageResource villageResource;
+  @JoinColumn(name = "village_id")
+  private Village village;
 
   @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "building_id", referencedColumnName = "id", unique = true)
@@ -27,17 +28,13 @@ public class ConstructionSite {
 
   public ConstructionSite() {}
 
-  public ConstructionSite(VillageResource villageResource, Building building) {
+  public ConstructionSite(Village village, Building building) {
     this.building = building;
-    this.villageResource = villageResource;
+    this.village = village;
   }
 
-  public int getId() {
+  public Long getId() {
     return id;
-  }
-
-  public void setId(int id) {
-    this.id = id;
   }
 
   public Building getBuilding() {
@@ -48,11 +45,8 @@ public class ConstructionSite {
     this.building = building;
   }
 
-  public VillageResource getVillageResource() {
-    return villageResource;
+  public Village getVillage() {
+    return village;
   }
 
-  public void setVillageResource(VillageResource villageResource) {
-    this.villageResource = villageResource;
-  }
 }
