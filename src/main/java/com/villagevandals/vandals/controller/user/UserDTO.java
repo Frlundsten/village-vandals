@@ -1,7 +1,10 @@
 package com.villagevandals.vandals.controller.user;
 
-import java.util.List;
+import com.villagevandals.vandals.controller.village.VillageDTO;
 
-public record UserDTO (long id, String username, List<com.villagevandals.vandals.controller.village.VillageDTO> villages) {
+import java.util.List;
+import java.util.UUID;
+
+public record UserDTO (UUID id, String username, List<VillageDTO> villages) {
 
 }
