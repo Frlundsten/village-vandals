@@ -4,14 +4,15 @@ import com.villagevandals.vandals.controller.user.UserDTO;
 import com.villagevandals.vandals.controller.village.VillageDTO;
 import com.villagevandals.vandals.model.domain.User;
 import com.villagevandals.vandals.model.domain.Village;
+import com.villagevandals.vandals.web.UserInfo;
 import com.villagevandals.vandals.repository.user.UserRepository;
-import com.villagevandals.vandals.repository.user.UserResource;
-import com.villagevandals.vandals.repository.village.VillageResource;
+import com.villagevandals.vandals.repository.village.ConstructionSite;
+import com.villagevandals.vandals.repository.village.ConstructionSiteRepository;
 import com.villagevandals.vandals.service.village.VillageService;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-
+import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,37 +24,70 @@ public class UserService {
   UserRepository userRepository;
   PasswordEncoder passwordEncoder;
   VillageService villageService;
+  ConstructionSiteRepository constructionSiteRepository;
 
   public UserService(
       UserRepository userRepository,
       PasswordEncoder passwordEncoder,
-      VillageService villageService) {
+      VillageService villageService,
+      ConstructionSiteRepository constructionSiteRepository) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.villageService = villageService;
+    this.constructionSiteRepository = constructionSiteRepository;
   }
 
-  public User newUser(String username, String rawPassword) {
-    if (userRepository.findByUsername(username).isPresent()) {
+  public void newUser(UserInfo userInfo) {
+    if (userRepository.findByUsername(userInfo.username()).isPresent()) {
       throw new RuntimeException("Username already taken");
     }
 
-    return new User(username, passwordEncoder.encode(rawPassword), new ArrayList<>());
+    var user =
+        new User(
+            UUID.randomUUID(),
+            userInfo.username(),
+            passwordEncoder.encode(userInfo.password()),
+            userInfo.email(),
+            userInfo.roles(),
+            new ArrayList<>());
+
+    saveUser(setupNewUserVillage(user));
+
+    addConstructionSitesForVillage(user);
   }
 
-  public UserResource saveNewUser(User user) {
-    return userRepository.save(UserResource.toResource(user));
+  private User setupNewUserVillage(User user) {
+    Village village = villageService.starterVillage(user);
+    user.addToVillages(village);
+
+    return user;
+  }
+
+  private void saveUser(User user) {
+    userRepository.save(user);
+  }
+
+  private void addConstructionSitesForVillage(User owner) {
+    Optional<Village> village = villageService.getStarterVillage(owner);
+
+    if (village.isPresent()) {
+      var constructionList = new ArrayList<ConstructionSite>();
+      for (int i = 0; i < 11; i++) {
+        constructionList.add(new ConstructionSite(village.get(), null));
+      }
+      constructionSiteRepository.saveAll(constructionList);
+    }
   }
 
   public UserDTO getUserInfo(String username) {
     LOG.debug("Getting user info for username {}", username);
 
-    UserResource user =
+    User user =
         userRepository
             .findByUsername(username)
             .orElseThrow(() -> new RuntimeException("Username not found"));
 
-    List<VillageDTO> villageDTOList = user.getVillages().stream().map(VillageResource::toDTO).toList();
+    List<VillageDTO> villageDTOList = user.getVillages().stream().map(Village::toDTO).toList();
 
     return new UserDTO(user.getId(), username, villageDTOList);
   }
