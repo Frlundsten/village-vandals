@@ -1,7 +1,6 @@
 import {createRouter, createWebHistory} from 'vue-router'
 import Home from '../views/Home.vue'
 import World from "@/views/WorldView.vue";
-import Village from "@/components/Village.vue";
 import LoginView from "@/views/LoginView.vue";
 import {useSessionStore} from "@/stores/pinia.js";
 import RegisterView from "@/views/RegisterView.vue";
