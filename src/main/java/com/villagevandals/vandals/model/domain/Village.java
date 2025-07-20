@@ -1,5 +1,7 @@
 package com.villagevandals.vandals.model.domain;
 
+import static java.util.Objects.requireNonNull;
+
 import com.villagevandals.vandals.controller.village.VillageDTO;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -11,8 +13,35 @@ import jakarta.persistence.ManyToOne;
 
 @Entity
 public class Village {
+
   public Village() {}
 
+  public static Village initStarterVillage(User user) {
+    return new Village(user);
+  }
+
+  /**
+   * Creates a new starter village with auto-generated X and Y coordinates.
+   *
+   * <p>Use this constructor when initializing a player's first village.
+   *
+   * @param owner the user who will be the owner of the village
+   */
+  private Village(User owner) {
+    this.xCoordinate = generateStartingX();
+    this.yCoordinate = generateStartingY();
+    this.storage = new ResourceStorage();
+    this.production = new ResourceProduction();
+    this.owner = requireNonNull(owner, "Must have valid owner");
+  }
+
+  /**
+   * Creates a new village at the specified coordinates with the given user as the owner.
+   *
+   * @param xCoordinate the x-coordinate where the village will be created
+   * @param yCoordinate the y-coordinate where the village will be created
+   * @param owner the user who will be set as the owner of the new village
+   */
   public Village(int xCoordinate, int yCoordinate, User owner) {
     this.xCoordinate = xCoordinate;
     this.yCoordinate = yCoordinate;
@@ -21,10 +50,12 @@ public class Village {
     this.owner = owner;
   }
 
-  public Village(Builder builder) {
-    this.xCoordinate = builder.x;
-    this.yCoordinate = builder.y;
-    this.owner = builder.owner;
+  private int generateStartingX() {
+    return 1;
+  }
+
+  private int generateStartingY() {
+    return 1;
   }
 
   @Id
@@ -63,59 +94,12 @@ public class Village {
     return storage;
   }
 
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public int getX() {
+  public int getxCoordinate() {
     return xCoordinate;
   }
 
-  public int getY() {
+  public int getyCoordinate() {
     return yCoordinate;
-  }
-
-  public static class Builder {
-    private User owner;
-    private int x;
-    private int y;
-    private ResourceStorage storage = new ResourceStorage();
-    private ResourceProduction production = new ResourceProduction();
-
-    public Builder startingVillage(User owner) {
-      this.owner = owner;
-      this.x = generateStartingX();
-      this.y = generateStartingY();
-      return this;
-    }
-
-    private int generateStartingX() {
-      return 1;
-    }
-
-    private int generateStartingY() {
-      return 1;
-    }
-
-    public Builder storage(ResourceStorage storage) {
-      this.storage = storage;
-      return this;
-    }
-
-    public Builder production(ResourceProduction production) {
-      this.production = production;
-      return this;
-    }
-
-    public Village build() {
-      if (owner == null) {
-        throw new IllegalStateException("Owner must be set");
-      }
-      Village village = new Village(this);
-      village.storage = this.storage;
-      village.production = this.production;
-      return village;
-    }
   }
 
   @Override
