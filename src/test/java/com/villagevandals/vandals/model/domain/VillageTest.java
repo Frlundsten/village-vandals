@@ -1,21 +1,29 @@
 package com.villagevandals.vandals.model.domain;
 
+import static com.villagevandals.vandals.model.domain.Village.initStarterVillage;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
-import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 
 class VillageTest {
 
   @Test
-  void testCreateVillage() {
-    User user = new User("User", "random", new ArrayList<>());
-    Village village = Village.builder().startingVillage(user).build();
-    user.villages().add(village);
-
-    assertThat(village).isNotNull();
-    assertThat(village.getOwner()).isEqualTo(user);
-    assertThat(village.getX()).isEqualTo(1);
-    assertThat(village.getY()).isEqualTo(1);
+  void shouldReturnStarterVillage() {
+    assertThatNoException().isThrownBy(() -> initStarterVillage(new User()));
   }
+
+  @Test
+  void shouldReturnVillage() {
+    int X_COORDINATE = 1;
+    int Y_COORDINATE = 2;
+    Village v = new Village(X_COORDINATE, Y_COORDINATE, new User());
+
+    assertThat(v).isNotNull();
+    assertThat(v.getxCoordinate()).isEqualTo(X_COORDINATE);
+    assertThat(v.getyCoordinate()).isEqualTo(Y_COORDINATE);
+    assertThat(v.getStorage()).isNotNull();
+    assertThat(v.getProduction()).isNotNull();
+  }
+
 }
