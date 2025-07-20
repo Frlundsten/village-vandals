@@ -47,7 +47,7 @@ public class Village {
     this.yCoordinate = yCoordinate;
     this.storage = new ResourceStorage();
     this.production = new ResourceProduction();
-    this.owner = owner;
+    this.owner = requireNonNull(owner, "Must have valid owner");
   }
 
   private int generateStartingX() {

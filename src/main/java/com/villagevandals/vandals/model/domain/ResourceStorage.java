@@ -1,16 +1,17 @@
 package com.villagevandals.vandals.model.domain;
 
-import jakarta.persistence.Embeddable;
+import static com.villagevandals.vandals.service.util.GameDefaults.DEFAULT_STARTING_RESOURCE_COUNT;
 
+import jakarta.persistence.Embeddable;
 import java.time.Instant;
 
 /** Amount of resources acquired and when it was last updated at db */
 @Embeddable
 public class ResourceStorage {
-  private int wood = 100;
-  private int stone = 100;
-  private int iron = 100;
-  private int crop = 100;
+  private int wood = DEFAULT_STARTING_RESOURCE_COUNT;
+  private int stone = DEFAULT_STARTING_RESOURCE_COUNT;
+  private int iron = DEFAULT_STARTING_RESOURCE_COUNT;
+  private int crop = DEFAULT_STARTING_RESOURCE_COUNT;
   private Instant lastUpdate = Instant.now();
 
   public int getWood() {
@@ -55,12 +56,17 @@ public class ResourceStorage {
 
   @Override
   public String toString() {
-    return "ResourceStorage{" +
-            "wood=" + wood +
-            ", stone=" + stone +
-            ", iron=" + iron +
-            ", crop=" + crop +
-            ", lastUpdate=" + lastUpdate +
-            '}';
+    return "ResourceStorage{"
+        + "wood="
+        + wood
+        + ", stone="
+        + stone
+        + ", iron="
+        + iron
+        + ", crop="
+        + crop
+        + ", lastUpdate="
+        + lastUpdate
+        + '}';
   }
 }

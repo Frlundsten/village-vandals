@@ -1,13 +1,15 @@
 package com.villagevandals.vandals.model.domain;
 
+import static com.villagevandals.vandals.service.util.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
+
 import jakarta.persistence.Embeddable;
 
 @Embeddable
 public class ResourceProduction {
-  private int woodPerHour = 3600;
-  private int clayPerHour = 3600;
-  private int ironPerHour = 3600;
-  private int cropPerHour = 3600;
+  private int woodPerHour = DEFAULT_PRODUCTION_PER_HOUR;
+  private int clayPerHour = DEFAULT_PRODUCTION_PER_HOUR;
+  private int ironPerHour = DEFAULT_PRODUCTION_PER_HOUR;
+  private int cropPerHour = DEFAULT_PRODUCTION_PER_HOUR;
 
   public int getWoodPerHour() {
     return woodPerHour;
@@ -21,33 +23,25 @@ public class ResourceProduction {
     return clayPerHour;
   }
 
-  public void setClayPerHour(int clayPerHour) {
-    this.clayPerHour = clayPerHour;
-  }
-
   public int getIronPerHour() {
     return ironPerHour;
-  }
-
-  public void setIronPerHour(int ironPerHour) {
-    this.ironPerHour = ironPerHour;
   }
 
   public int getCropPerHour() {
     return cropPerHour;
   }
 
-  public void setCropPerHour(int cropPerHour) {
-    this.cropPerHour = cropPerHour;
-  }
-
   @Override
   public String toString() {
-    return "ResourceProduction{" +
-            "woodPerHour=" + woodPerHour +
-            ", clayPerHour=" + clayPerHour +
-            ", ironPerHour=" + ironPerHour +
-            ", cropPerHour=" + cropPerHour +
-            '}';
+    return "ResourceProduction{"
+        + "woodPerHour="
+        + woodPerHour
+        + ", clayPerHour="
+        + clayPerHour
+        + ", ironPerHour="
+        + ironPerHour
+        + ", cropPerHour="
+        + cropPerHour
+        + '}';
   }
 }
