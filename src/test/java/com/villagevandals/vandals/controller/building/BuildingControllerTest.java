@@ -11,8 +11,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.villagevandals.vandals.service.user.UserInfoService;
-import com.villagevandals.vandals.service.village.BuildingService;
+import com.villagevandals.vandals.building.BuildingController;
+import com.villagevandals.vandals.web.UserInfoService;
+import com.villagevandals.vandals.building.BuildingService;
 import com.villagevandals.vandals.web.jwt.JwtService;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;

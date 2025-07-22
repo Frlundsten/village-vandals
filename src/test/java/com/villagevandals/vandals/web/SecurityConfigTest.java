@@ -4,7 +4,7 @@
 //
 //import java.net.URL;
 //
-//import com.villagevandals.vandals.repository.user.UserRepository;
+//import com.villagevandals.vandals.user.UserRepository;
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.Test;
 //import org.springframework.boot.test.context.SpringBootTest;

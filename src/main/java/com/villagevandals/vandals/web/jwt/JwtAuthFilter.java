@@ -1,6 +1,6 @@
 package com.villagevandals.vandals.web.jwt;
 
-import com.villagevandals.vandals.service.user.UserInfoService;
+import com.villagevandals.vandals.web.UserInfoService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,6 +1,5 @@
 package com.villagevandals.vandals.web;
 
-import com.villagevandals.vandals.service.user.UserInfoService;
 import com.villagevandals.vandals.web.jwt.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
