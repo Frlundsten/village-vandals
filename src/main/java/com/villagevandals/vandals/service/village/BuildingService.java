@@ -52,7 +52,6 @@ public class BuildingService {
     if (!siteInVillageId.getFirst().getVillage().getOwner().getUsername().equals(username)) {
       throw new IllegalArgumentException("Not valid owner");
     }
-
     return siteInVillageId.stream().map(ConstructionSite::getBuilding).toList();
   }
 }
