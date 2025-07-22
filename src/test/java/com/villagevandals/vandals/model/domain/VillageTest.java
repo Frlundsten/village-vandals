@@ -1,9 +1,11 @@
 package com.villagevandals.vandals.model.domain;
 
-import static com.villagevandals.vandals.model.domain.Village.initStarterVillage;
+import static com.villagevandals.vandals.village.Village.initStarterVillage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
+import com.villagevandals.vandals.user.User;
+import com.villagevandals.vandals.village.Village;
 import org.junit.jupiter.api.Test;
 
 class VillageTest {
