@@ -9,9 +9,9 @@ import java.time.Instant;
 @Embeddable
 public class ResourceStorage {
   private int wood = DEFAULT_STARTING_RESOURCE_COUNT;
-  private int stone = DEFAULT_STARTING_RESOURCE_COUNT;
+  private int bricks = DEFAULT_STARTING_RESOURCE_COUNT;
   private int iron = DEFAULT_STARTING_RESOURCE_COUNT;
-  private int crop = DEFAULT_STARTING_RESOURCE_COUNT;
+  private int food = DEFAULT_STARTING_RESOURCE_COUNT;
   private Instant lastUpdate = Instant.now();
 
   public int getWood() {
@@ -22,12 +22,12 @@ public class ResourceStorage {
     this.wood = wood;
   }
 
-  public int getStone() {
-    return stone;
+  public int getBricks() {
+    return bricks;
   }
 
-  public void setStone(int stone) {
-    this.stone = stone;
+  public void setBricks(int bricks) {
+    this.bricks = bricks;
   }
 
   public int getIron() {
@@ -38,12 +38,12 @@ public class ResourceStorage {
     this.iron = iron;
   }
 
-  public int getCrop() {
-    return crop;
+  public int getFood() {
+    return food;
   }
 
-  public void setCrop(int crop) {
-    this.crop = crop;
+  public void setFood(int food) {
+    this.food = food;
   }
 
   public Instant getLastUpdate() {
@@ -59,12 +59,12 @@ public class ResourceStorage {
     return "ResourceStorage{"
         + "wood="
         + wood
-        + ", stone="
-        + stone
+        + ", bricks="
+        + bricks
         + ", iron="
         + iron
-        + ", crop="
-        + crop
+        + ", food="
+        + food
         + ", lastUpdate="
         + lastUpdate
         + '}';

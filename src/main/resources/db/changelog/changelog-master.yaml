@@ -122,7 +122,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: stone
+                  name: bricks
                   type: INT
                   constraints:
                     nullable: false
@@ -132,7 +132,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: crop
+                  name: food
                   type: INT
                   constraints:
                     nullable: false
@@ -147,7 +147,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: clay_per_hour
+                  name: bricks_per_hour
                   type: INT
                   defaultValueNumeric: "3600"
                   constraints:
@@ -159,7 +159,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: crop_per_hour
+                  name: food_per_hour
                   type: INT
                   defaultValueNumeric: "3600"
                   constraints:

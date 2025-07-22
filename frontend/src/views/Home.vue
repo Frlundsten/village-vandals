@@ -29,7 +29,7 @@ const village = ref({
 const resources = ref({
   food: 0,
   wood: 0,
-  stone: 0,
+  bricks: 0,
   iron: 0,
 });
 
@@ -79,7 +79,7 @@ function clearUserData() {
   player.value = {name: ''}
   currentVillage.value = null
   village.value = {name: '', buildings: []}
-  resources.value = {food: 0, wood: 0, stone: 0, iron: 0}
+  resources.value = {food: 0, wood: 0, bricks: 0, iron: 0}
 }
 
 async function refreshStorage() {
@@ -101,9 +101,9 @@ async function refreshStorage() {
 
     const data = await response.json();
 
-    resources.value.food = data.crop;
+    resources.value.food = data.food;
     resources.value.wood = data.wood;
-    resources.value.stone = data.stone;
+    resources.value.bricks = data.bricks;
     resources.value.iron = data.iron;
   } catch (error) {
     console.error('Failed to refresh storage:', error);
@@ -147,7 +147,7 @@ function goTo(section) {
         <div class="tooltip tooltip-bottom" data-tip="Brick">
           <div
               class="badge badge-warning flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-amber-400 to-amber-500 text-black">
-            <span class="text-2xl">🧱</span> {{ resources.stone }}
+            <span class="text-2xl">🧱</span> {{ resources.bricks }}
           </div>
         </div>
 
