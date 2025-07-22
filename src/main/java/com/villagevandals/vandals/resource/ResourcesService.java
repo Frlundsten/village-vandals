@@ -1,11 +1,12 @@
 package com.villagevandals.vandals.resource;
 
+import static com.villagevandals.vandals.util.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
+
 import com.villagevandals.vandals.building.buildings.LumberMill;
 import com.villagevandals.vandals.village.VillageRepository;
-import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.time.Instant;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ResourcesService {
@@ -38,21 +39,29 @@ public class ResourcesService {
     long secondsSinceLastUpdate = Duration.between(storage.getLastUpdate(), now).getSeconds();
 
     // Calculate produced resources since last update
-    int producedWood = (int) (production.getWoodPerHour() * (secondsSinceLastUpdate / 3600.0));
-    int producedClay = (int) (production.getClayPerHour() * (secondsSinceLastUpdate / 3600.0));
-    int producedIron = (int) (production.getIronPerHour() * (secondsSinceLastUpdate / 3600.0));
-    int producedCrop = (int) (production.getCropPerHour() * (secondsSinceLastUpdate / 3600.0));
+    int producedWood =
+        amountProducedSinceLastUpdate(production.getWoodPerHour(), secondsSinceLastUpdate);
+    int producedBricks =
+        amountProducedSinceLastUpdate(production.getBricksPerHour(), secondsSinceLastUpdate);
+    int producedIron =
+        amountProducedSinceLastUpdate(production.getIronPerHour(), secondsSinceLastUpdate);
+    int producedFood =
+        amountProducedSinceLastUpdate(production.getFoodPerHour(), secondsSinceLastUpdate);
 
     // Update stored amounts
     storage.setWood(storage.getWood() + producedWood);
-    storage.setStone(storage.getStone() + producedClay); // assuming clay is stored as stone?
+    storage.setBricks(storage.getBricks() + producedBricks);
     storage.setIron(storage.getIron() + producedIron);
-    storage.setCrop(storage.getCrop() + producedCrop);
+    storage.setFood(storage.getFood() + producedFood);
 
     storage.setLastUpdate(now);
 
     repository.save(village);
 
     return storage;
+  }
+
+  private int amountProducedSinceLastUpdate(int productionRate, long secondsSinceLastUpdate) {
+    return (int) (productionRate * (secondsSinceLastUpdate / DEFAULT_PRODUCTION_PER_HOUR));
   }
 }
