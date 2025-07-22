@@ -71,7 +71,7 @@ async function registerUser() {
     } else {
       const errText = await response.text()
       console.log(errText)
-      message.value = `Registration failed: ${errText}`
+      message.value = `Registration failed`
     }
   } catch (error) {
     message.value = `Error: ${error.message}`
