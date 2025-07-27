@@ -1,5 +1,9 @@
 package com.villagevandals.vandals.resource;
 
+import static com.villagevandals.vandals.resource.Resource.BRICKS;
+import static com.villagevandals.vandals.resource.Resource.FOOD;
+import static com.villagevandals.vandals.resource.Resource.IRON;
+import static com.villagevandals.vandals.resource.Resource.WOOD;
 import static com.villagevandals.vandals.util.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
 
 import com.villagevandals.vandals.building.buildings.LumberMill;
@@ -49,11 +53,10 @@ public class ResourcesService {
         amountProducedSinceLastUpdate(production.getFoodPerHour(), secondsSinceLastUpdate);
 
     // Update stored amounts
-    storage.setWood(storage.getWood() + producedWood);
-    storage.setBricks(storage.getBricks() + producedBricks);
-    storage.setIron(storage.getIron() + producedIron);
-    storage.setFood(storage.getFood() + producedFood);
-
+    storage.set(WOOD, updateAmount(storage.get(WOOD), producedWood));
+    storage.set(BRICKS, updateAmount(storage.get(BRICKS), producedBricks));
+    storage.set(IRON, updateAmount(storage.get(IRON), producedIron));
+    storage.set(FOOD, updateAmount(storage.get(FOOD), producedFood));
     storage.setLastUpdate(now);
 
     repository.save(village);
@@ -61,7 +64,11 @@ public class ResourcesService {
     return storage;
   }
 
+  private int updateAmount(int storedAmount, int producedAmount) {
+    return storedAmount + producedAmount;
+  }
+
   private int amountProducedSinceLastUpdate(int productionRate, long secondsSinceLastUpdate) {
-    return (int) (productionRate * (secondsSinceLastUpdate / DEFAULT_PRODUCTION_PER_HOUR));
+    return (int) (productionRate * (secondsSinceLastUpdate / (double) DEFAULT_PRODUCTION_PER_HOUR)); // Cast to double or else you will get 0!!
   }
 }

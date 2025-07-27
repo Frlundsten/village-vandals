@@ -116,26 +116,26 @@ databaseChangeLog:
                   type: UUID
                   constraints:
                     nullable: false
-              - column:
-                  name: wood
-                  type: INT
-                  constraints:
-                    nullable: false
-              - column:
-                  name: bricks
-                  type: INT
-                  constraints:
-                    nullable: false
-              - column:
-                  name: iron
-                  type: INT
-                  constraints:
-                    nullable: false
-              - column:
-                  name: food
-                  type: INT
-                  constraints:
-                    nullable: false
+#              - column:
+#                  name: wood
+#                  type: INT
+#                  constraints:
+#                    nullable: false
+#              - column:
+#                  name: bricks
+#                  type: INT
+#                  constraints:
+#                    nullable: false
+#              - column:
+#                  name: iron
+#                  type: INT
+#                  constraints:
+#                    nullable: false
+#              - column:
+#                  name: food
+#                  type: INT
+#                  constraints:
+#                    nullable: false
               - column:
                   name: last_update
                   type: TIMESTAMP
@@ -216,3 +216,37 @@ databaseChangeLog:
             constraintName: fk_construction_site_building
             referencedTableName: building
             referencedColumnNames: id
+
+  - changeSet:
+      id: 006-create-resource-storage-resources-table
+      author: f
+      changes:
+        - createTable:
+            tableName: resource_storage_resources
+            columns:
+              - column:
+                  name: village_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: INT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: resource_storage_resources
+            columnNames: village_id, resource
+            constraintName: pk_resource_storage_resources
+        - addForeignKeyConstraint:
+            baseTableName: resource_storage_resources
+            baseColumnNames: village_id
+            constraintName: fk_resource_storage_resources_village
+            referencedTableName: village
+            referencedColumnNames: id
+            onDelete: CASCADE
