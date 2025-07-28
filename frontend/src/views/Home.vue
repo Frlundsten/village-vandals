@@ -51,7 +51,7 @@ watch(isAuthenticated, (loggedIn) => {
 
 async function loadUserData() {
   try {
-    const response = await fetch('http://localhost:8080/user', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/user`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
       }
@@ -88,7 +88,7 @@ async function refreshStorage() {
 
     const villageId = currentVillage.value.id;
 
-    const response = await fetch(`http://localhost:8080/resources/refresh?villageId=${villageId}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/resources/refresh?villageId=${villageId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`

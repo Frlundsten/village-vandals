@@ -13,7 +13,7 @@ defineProps({
 
 onMounted(async () => {
   try {
-    const response = await fetch(`http://localhost:8080/buildings?villageId=${villageId}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/buildings?villageId=${villageId}`, {
       method: 'GET',
       credentials: 'include',
     });
