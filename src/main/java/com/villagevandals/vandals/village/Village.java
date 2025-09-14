@@ -8,6 +8,7 @@ import com.villagevandals.vandals.user.User;
 import com.villagevandals.vandals.village.dto.VillageDTO;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -68,7 +69,7 @@ public class Village {
   private int xCoordinate;
   private int yCoordinate;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User owner;
 
