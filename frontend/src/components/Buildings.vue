@@ -6,7 +6,7 @@ const buildings = ref({})
 
 defineProps({
   villageId: {
-    type: Number,
+    type: String,
     required: true
   }
 })
