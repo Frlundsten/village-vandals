@@ -10,6 +10,6 @@ public class GameDefaults {
 
     // Production
     public static final int DEFAULT_PRODUCTION_PER_HOUR = 3600;
-    public static final int DEFAULT_LUMBERMILL_PRODUCTION_RATE = 20;
+    public static final int DEFAULT_ECONOMICAL_PRODUCTION_RATE = 20;
 
 }

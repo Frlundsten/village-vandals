@@ -30,7 +30,7 @@ const router = useRouter()
 async function login() {
   error.value = null;
   try {
-    const response = await fetch('http://localhost:8080/user/auth/generateToken', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/user/auth/generateToken`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

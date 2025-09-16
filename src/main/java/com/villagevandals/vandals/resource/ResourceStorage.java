@@ -25,9 +25,8 @@ public class ResourceStorage {
 
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(
-          name = "resource_storage_resources",
-          joinColumns = @JoinColumn(name = "village_id")  // <-- FK referencing owning entity's PK
-  )
+      name = "resource_storage_resources",
+      joinColumns = @JoinColumn(name = "village_id"))
   @MapKeyColumn(name = "resource")
   @MapKeyEnumerated(EnumType.STRING)
   @Column(name = "amount")

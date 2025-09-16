@@ -1,7 +1,7 @@
 <script setup>
 import {RouterView, useRouter} from 'vue-router'
 
-import {onMounted, ref, watch} from 'vue';
+import {onMounted, ref, watch, computed} from 'vue';
 import Avatar from "@/components/Avatar.vue";
 
 import {useSessionStore} from '@/stores/pinia.js'
@@ -33,9 +33,14 @@ const resources = ref({
   iron: 0,
 });
 
-const {token, isAuthenticated} = storeToRefs(session)
+const {isAuthenticated} = storeToRefs(session)
 
 onMounted(() => {
+  const storedVillageId = localStorage.getItem("villageId")
+  if (storedVillageId && !currentVillage.value) {
+    currentVillage.value = { id: Number(storedVillageId), name: '' }
+  }
+
   if (isAuthenticated.value) {
     loadUserData()
   }
@@ -51,7 +56,7 @@ watch(isAuthenticated, (loggedIn) => {
 
 async function loadUserData() {
   try {
-    const response = await fetch('http://localhost:8080/user', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/user`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
       }
@@ -64,6 +69,7 @@ async function loadUserData() {
     village.value.name = currentVillage.value?.name || ''
 
     if (currentVillage.value) {
+      localStorage.setItem("villageId", currentVillage.value.id)
       await refreshStorage()
     } else {
       console.warn('No village found for user')
@@ -88,7 +94,7 @@ async function refreshStorage() {
 
     const villageId = currentVillage.value.id;
 
-    const response = await fetch(`http://localhost:8080/resources/refresh?villageId=${villageId}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/resources/refresh?villageId=${villageId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
@@ -113,6 +119,10 @@ async function refreshStorage() {
 function goTo(section) {
   console.log(`Navigate to ${section}`);
 }
+
+const safeVillageId = computed(() => {
+  return currentVillage.value?.id ?? Number(localStorage.getItem("villageId"))
+})
 </script>
 
 <template>
@@ -165,7 +175,7 @@ function goTo(section) {
       <aside class="w-[12%] min-w-[120px] bg-base-100 p-4 shadow-inner overflow-y-auto">
         <ul class="menu rounded-box bg-base-200 w-full">
           <li>
-            <RouterLink @click="refreshStorage" to="/village">🏘️️ Village</RouterLink>
+            <RouterLink @click="refreshStorage"  :to="{ name: 'Village', params: { villageId: safeVillageId } }">🏘️️ Village</RouterLink>
           </li>
           <li><a @click="goTo('buildings')">🏗️ Buildings</a></li>
           <li><a @click="goTo('army')">🛡️ Army</a></li>

@@ -6,38 +6,45 @@ import static com.villagevandals.vandals.resource.Resource.IRON;
 import static com.villagevandals.vandals.resource.Resource.WOOD;
 import static com.villagevandals.vandals.util.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
 
-import com.villagevandals.vandals.building.buildings.LumberMill;
+import com.villagevandals.vandals.building.buildings.Building;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.time.Duration;
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ResourcesService {
+  private static final Logger LOG = LoggerFactory.getLogger(ResourcesService.class);
+
   VillageRepository repository;
 
   public ResourcesService(VillageRepository repository) {
     this.repository = repository;
   }
 
-  public void updateProduction(LumberMill mill, long villageId) {
-    var optionalVillage = repository.findById(villageId);
-    if (optionalVillage.isPresent()) {
-      var villageResource = optionalVillage.get();
-      var production = villageResource.getProduction();
-      production.setWoodPerHour(production.getWoodPerHour() + mill.productionPerHour());
-      repository.save(villageResource);
-    } else {
-      throw new IllegalStateException("No such village...");
+  public void updateProduction(Building building, long villageId) {
+    switch (building.getType()) {
+      case "LUMBERMILL" ->
+          repository.increaseWoodProduction(villageId, building.productionPerHour());
+      case "FARM" -> repository.increaseFoodProduction(villageId, building.productionPerHour());
+      default -> throw new IllegalStateException("Unexpected value: " + building.getType());
     }
   }
 
-  public ResourceStorage handleUserAction(long villageId) {
+  public ResourceStorage getCurrentResourceStorage(long villageId) {
+
+    LOG.debug("Calculating storage resources since last time...");
+
     var villageOpt = repository.findById(villageId);
+    LOG.debug("Find village by id {}", villageId);
     var village = villageOpt.orElseThrow(() -> new IllegalArgumentException("Village not found"));
 
     var storage = village.getStorage();
     var production = village.getProduction();
+
+    LOG.debug("Storage was last updated : {}", storage.getLastUpdate());
 
     Instant now = Instant.now();
     long secondsSinceLastUpdate = Duration.between(storage.getLastUpdate(), now).getSeconds();
@@ -52,16 +59,14 @@ public class ResourcesService {
     int producedFood =
         amountProducedSinceLastUpdate(production.getFoodPerHour(), secondsSinceLastUpdate);
 
-    // Update stored amounts
-    storage.set(WOOD, updateAmount(storage.get(WOOD), producedWood));
-    storage.set(BRICKS, updateAmount(storage.get(BRICKS), producedBricks));
-    storage.set(IRON, updateAmount(storage.get(IRON), producedIron));
-    storage.set(FOOD, updateAmount(storage.get(FOOD), producedFood));
-    storage.setLastUpdate(now);
+    ResourceStorage storageCopy = new ResourceStorage();
+    storageCopy.set(WOOD, updateAmount(storage.get(WOOD), producedWood));
+    storageCopy.set(BRICKS, updateAmount(storage.get(BRICKS), producedBricks));
+    storageCopy.set(IRON, updateAmount(storage.get(IRON), producedIron));
+    storageCopy.set(FOOD, updateAmount(storage.get(FOOD), producedFood));
+    storageCopy.setLastUpdate(now);
 
-    repository.save(village);
-
-    return storage;
+    return storageCopy;
   }
 
   private int updateAmount(int storedAmount, int producedAmount) {
@@ -69,6 +74,9 @@ public class ResourcesService {
   }
 
   private int amountProducedSinceLastUpdate(int productionRate, long secondsSinceLastUpdate) {
-    return (int) (productionRate * (secondsSinceLastUpdate / (double) DEFAULT_PRODUCTION_PER_HOUR)); // Cast to double or else you will get 0!!
+    return (int)
+        (productionRate
+            * (secondsSinceLastUpdate
+                / (double) DEFAULT_PRODUCTION_PER_HOUR)); // Cast to double or else you will get 0!!
   }
 }
