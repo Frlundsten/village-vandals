@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "building_type", discriminatorType = DiscriminatorType.STRING)
 public abstract class Building {
 
@@ -43,6 +43,15 @@ public abstract class Building {
   }
 
   public Map<String, Integer> getUpgradeCost() {
+    if (level == DEFAULT_STARTING_LEVEL) {
+      Map<String, Integer> cost = new HashMap<>();
+      cost.put("wood", woodCost);
+      cost.put("bricks", bricksCost);
+      cost.put("food", foodCost);
+      cost.put("iron", ironCost);
+      return cost;
+    }
+
     Map<String, Integer> cost = new HashMap<>();
     cost.put("wood", woodCost * nextLevel());
     cost.put("bricks", bricksCost * nextLevel());
@@ -57,5 +66,13 @@ public abstract class Building {
 
   public int getLevel() {
     return level;
+  }
+
+  protected void setType(String type) {
+    this.type = type;
+  }
+
+  public String getType() {
+    return type;
   }
 }
