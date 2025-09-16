@@ -188,9 +188,6 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: building_type
-                  type: VARCHAR(255)
-              - column:
                   name: village_id
                   type: BIGINT
                   constraints:
