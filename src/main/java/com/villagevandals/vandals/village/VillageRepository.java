@@ -16,12 +16,22 @@ public interface VillageRepository extends JpaRepository<Village, Long> {
       value =
 """
     UPDATE village
-    SET wood_per_hour = wood_per_hour + :woodDelta
+    SET wood_per_hour = wood_per_hour + :delta
     WHERE id = :villageId
 """,
       nativeQuery = true)
-  void increaseWoodProduction(
-      @Param("villageId") Long villageId, @Param("woodDelta") int woodDelta);
+  void increaseWoodProduction(@Param("villageId") Long villageId, @Param("delta") int delta);
 
   Optional<Village> findByOwner(User owner);
+
+  @Modifying
+  @Query(
+      value =
+          """
+                        UPDATE village
+                        SET food_per_hour = food_per_hour + :delta
+                        WHERE id = :villageId
+                    """,
+      nativeQuery = true)
+  void increaseFoodProduction(@Param("villageId") Long villageId, @Param("delta") int delta);
 }

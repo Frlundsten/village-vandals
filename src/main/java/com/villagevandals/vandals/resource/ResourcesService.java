@@ -6,7 +6,7 @@ import static com.villagevandals.vandals.resource.Resource.IRON;
 import static com.villagevandals.vandals.resource.Resource.WOOD;
 import static com.villagevandals.vandals.util.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
 
-import com.villagevandals.vandals.building.buildings.LumberMill;
+import com.villagevandals.vandals.building.buildings.Building;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,8 +24,13 @@ public class ResourcesService {
     this.repository = repository;
   }
 
-  public void updateProduction(LumberMill mill, long villageId) {
-    repository.increaseWoodProduction(villageId, mill.productionPerHour());
+  public void updateProduction(Building building, long villageId) {
+    switch (building.getType()) {
+      case "LUMBERMILL" ->
+          repository.increaseWoodProduction(villageId, building.productionPerHour());
+      case "FARM" -> repository.increaseFoodProduction(villageId, building.productionPerHour());
+      default -> throw new IllegalStateException("Unexpected value: " + building.getType());
+    }
   }
 
   public ResourceStorage getCurrentResourceStorage(long villageId) {
