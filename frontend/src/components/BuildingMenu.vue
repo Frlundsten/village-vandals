@@ -9,7 +9,7 @@ const { tileInfo, villageId } = defineProps({
   villageId: Number
 });
 
-const emit = defineEmits(['buildingType'])
+const emit = defineEmits(['buildingType', 'closeMenu'])
 
 async function sendInfo(type, upgradeCost, tileInfo) {
   try {
@@ -60,18 +60,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="card bg-base-100 shadow-[1px_2px_2px_rgba(0,0,0,0.9)] ">
+  <div class="card bg-base-100 shadow-[1px_2px_2px_rgba(0,0,0,0.9)]">
     <div class="card-body">
-      <h2 class="card-title">
-        <div class="badge badge-primary">Buildings</div>
-      </h2>
       <div class="card-actions">
         <div v-for="building in availableBuildings" :key="building.type">
-          {{ tileInfo }}
-          <BuildingPresentationCard @click="sendInfo(building.type, building.upgradeCost,tileInfo)" class="hover:cursor-pointer" :img="'/farmer.png'" :type="building.type"
-                                    :upgradeCost="building.upgradeCost"/>
+          <BuildingPresentationCard
+            @click="sendInfo(building.type, building.upgradeCost, tileInfo)"
+            class="hover:cursor-pointer"
+            :type="building.type"
+            :upgradeCost="building.upgradeCost"
+          />
         </div>
       </div>
     </div>
+    <button @click="emit('closeMenu')" class="btn border-t-neutral-400 btn-success">Close</button>
   </div>
 </template>
