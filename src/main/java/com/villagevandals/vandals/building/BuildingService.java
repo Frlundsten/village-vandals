@@ -10,7 +10,9 @@ import com.villagevandals.vandals.resource.ResourcesService;
 import com.villagevandals.vandals.village.Village;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -84,12 +86,25 @@ public class BuildingService {
     return village.orElseThrow(() -> new IllegalArgumentException("Village Not Found"));
   }
 
-  public List<Building> getAllBuildingsByVillageId(Long villageId, String username) {
-    List<ConstructionSite> siteInVillageId = constructionSiteRepository.findByVillageId(villageId);
-    if (!siteInVillageId.getFirst().getVillage().getOwner().getUsername().equals(username)) {
-      throw new IllegalArgumentException("Not valid owner");
+  public Map<Long, Building> getAllBuildingsByVillageId(Long villageId, String username) {
+    try {
+      List<ConstructionSite> siteInVillageId =
+          constructionSiteRepository.findByVillageId(villageId).stream()
+              .filter(site -> site.getBuilding() != null)
+              .toList();
+      if (siteInVillageId == null || siteInVillageId.isEmpty()) {
+        throw new IllegalArgumentException("Village Not Found");
+      }
+      if (!siteInVillageId.getFirst().getVillage().getOwner().getUsername().equals(username)) {
+        throw new IllegalArgumentException("Not valid owner");
+      }
+      return siteInVillageId.stream()
+          .collect(Collectors.toMap(ConstructionSite::getId, ConstructionSite::getBuilding));
+
+    } catch (Exception e) {
+      LOG.error("Something went wrong: {}", e);
+      throw new RuntimeException(e);
     }
-    return siteInVillageId.stream().map(ConstructionSite::getBuilding).toList();
   }
 
   public List<Building> getAvailableBuildings(long villageId, String userName) {
