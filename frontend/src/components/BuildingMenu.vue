@@ -1,6 +1,7 @@
 <script setup>
 import {onMounted, ref} from "vue";
 import BuildingPresentationCard from "@/components/BuildingPresentationCard.vue";
+import { BASE_URL } from '@/util/util.js'
 
 const availableBuildings = ref([]);
 
@@ -13,7 +14,7 @@ const emit = defineEmits(['buildingType', 'closeMenu'])
 
 async function sendInfo(type, upgradeCost, tileInfo) {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/building`, {
+    const response = await fetch(`${BASE_URL}/building`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40,7 +41,7 @@ async function sendInfo(type, upgradeCost, tileInfo) {
 
 onMounted(async () => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/building/available?villageId=1`, {
+    const response = await fetch(`${BASE_URL}/building/available?villageId=1`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
