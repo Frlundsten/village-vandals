@@ -41,3 +41,8 @@ On the left side of the screen, you will find a navigation bar.
 
 ![vv.png](vv.png)
 
+Used resources: <br>
+Farmer <br>
+<a href="https://www.flaticon.com/free-icons/farmer" title="farmer icons">Farmer icons created by Amethyst prime - Flaticon</a> <br>
+LumberMill 
+<br> <a href="https://www.flaticon.com/free-icons/wood" title="wood icons">Wood icons created by imaginationlol - Flaticon</a>
