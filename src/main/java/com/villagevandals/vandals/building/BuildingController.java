@@ -1,6 +1,7 @@
 package com.villagevandals.vandals.building;
 
 import com.villagevandals.vandals.building.buildings.Building;
+import com.villagevandals.vandals.building.dto.BuildingDTO;
 import com.villagevandals.vandals.building.dto.ConstructionRequestDTO;
 import java.security.Principal;
 import java.util.List;
@@ -27,9 +28,13 @@ public class BuildingController {
   }
 
   @GetMapping
-  public List<Building> getExistingBuildings(@RequestParam Long villageId, Principal principal) {
+  public List<BuildingDTO> getExistingBuildings(@RequestParam Long villageId, Principal principal) {
     String username = principal.getName();
-    return buildingService.getAllBuildingsByVillageId(villageId, username);
+    LOG.debug("Got request to get existing buildings for user {}", username);
+
+    return buildingService.getAllBuildingsByVillageId(villageId, username).entrySet().stream()
+        .map(k -> BuildingDTO.fromEntity(k.getKey(), k.getValue()))
+        .toList();
   }
 
   @PostMapping
@@ -39,7 +44,7 @@ public class BuildingController {
       buildingService.constructBuilding(dto);
       return ResponseEntity.ok().build();
     } catch (Exception e) {
-        LOG.debug(e.getMessage());
+      LOG.error(e.getMessage());
       return ResponseEntity.badRequest().body("Unable to construct building");
     }
   }
