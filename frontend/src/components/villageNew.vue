@@ -4,14 +4,15 @@
     :tileInfo="currentTile"
     :villageId="villageId"
     v-if="showMenu"
-    :style="{ position: 'absolute', left: `${menuX}px`, top: `${menuY}px` }"
+    :style="{ position: 'absolute', left: '40%', top: '15vh' }"
     @building-type="handleBuildingSelection"
+    @close-menu="showMenu = false"
   />
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { Application, Assets, Container, Rectangle, Sprite, Texture } from 'pixi.js'
+import { Application, Assets, Container, Rectangle, Sprite } from 'pixi.js'
 import mapUrl from '@/assets/maps/vv.json?url'
 import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
@@ -32,8 +33,6 @@ let container
 let mapDataRef = null
 
 const showMenu = ref(false)
-let menuX = 0
-let menuY = 0
 
 const currentTile = ref({})
 
@@ -55,7 +54,7 @@ function resizeTilemap() {
   container.x = width / 2
   container.y = height / 2
 
-  // If you want, add a small offset up to move the map fully into view:
+  // Add a small offset up to move the map fully into view:
   container.y -= (isoHeight * scale) / 2.5 // tweak this as needed
 }
 
@@ -177,8 +176,6 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
 
   sprite.on('pointerdown', async () => {
     showMenu.value = !showMenu.value
-    menuX = event.clientX
-    menuY = event.clientY
     console.log(sprite._tileInfo)
     currentTile.value = sprite._tileInfo
   })
