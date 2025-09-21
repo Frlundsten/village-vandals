@@ -16,16 +16,9 @@ import { Application, Assets, Container, Rectangle, Sprite } from 'pixi.js'
 import mapUrl from '@/assets/maps/vv.json?url'
 import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
+import { fetchBuildings } from '@/util/api/buildings.js'
 
 const villageId = Number(localStorage.getItem('villageId'))
-
-// Look into a better solution to handle villageId....
-// defineProps({
-//   villageId: {
-//     type: String,
-//     required: true
-//   }
-// })
 
 const pixiContainer = ref(null)
 let app
@@ -59,78 +52,79 @@ function resizeTilemap() {
 }
 
 onMounted(async () => {
-  const tileSprites = new Map()
-  app = new Application()
+  try {
+    const existingBuildings = await fetchBuildings(villageId)
 
-  await app.init({ background: '#1099bb', resizeTo: window })
+    const tileSprites = new Map()
+    app = new Application()
 
-  pixiContainer.value.appendChild(app.canvas)
+    await app.init({ background: '#1099bb', resizeTo: window })
 
-  container = new Container()
+    pixiContainer.value.appendChild(app.canvas)
 
-  app.stage.addChild(container)
+    container = new Container()
 
-  // Load main map JSON (vv.tmj)
-  const mapData = await Assets.load(mapUrl)
-  mapDataRef = mapData
+    app.stage.addChild(container)
 
-  // Load tileset JSON and create GID -> texture mapping
-  const tileImageTextures = {}
+    // Load main map JSON (vv.tmj)
+    const mapData = await Assets.load(mapUrl)
+    mapDataRef = mapData
 
-  for (const tileset of mapData.tilesets) {
-    if (tileset.source) {
-      // Load tileset JSON file
-      const tilesetJson = await Assets.load(mapTilesUrl)
+    // Load tileset JSON and create GID -> texture mapping
+    const tileImageTextures = {}
+    const loadedTextures = {}
 
-      // For each tile in tileset, load texture
-      if (tilesetJson?.tileset?.tile && Array.isArray(tilesetJson.tileset.tile)) {
-        for (const tile of tilesetJson.tileset.tile) {
-          const id = tile._id
+    const tilesetJson = await Assets.load(mapTilesUrl)
+    const tilePromises = tilesetJson.tileset.tile.map((tile) => {
+      const id = tile._id
+      const fullPath = `/assets/${tile.image._source}`
+      if (!loadedTextures[fullPath]) {
+        loadedTextures[fullPath] = Assets.load(fullPath)
+      }
+      return loadedTextures[fullPath].then((texture) => {
+        tileImageTextures[id] = texture
+      })
+    })
+    await Promise.all(tilePromises)
 
-          const imageSource = tile.image?._source
+    let constructionSiteId = 0
 
-          const fullPath = `/assets/${imageSource}`
+    // Render tile layers
+    for (const layer of mapData.layers) {
+      if (layer.type !== 'tilelayer') continue
 
-          tileImageTextures[id] = await Assets.load(fullPath)
+      const { width, data } = layer
+      const tileWidth = mapData.tilewidth
+      const tileHeight = mapData.tileheight
+
+      for (let i = 0; i < data.length; i++) {
+        const gid = data[i]
+
+        // Continue with next tile if no gid or texture on tile
+        if (!gid || !tileImageTextures[gid - 1]) continue
+
+        const row = Math.floor(i / width)
+        const col = i % width
+
+        const sprite = new Sprite(tileImageTextures[gid - 1])
+
+        setupSprite(sprite, col, row, tileWidth, tileHeight)
+
+        if (isConstructionSiteTile(gid)) {
+          constructionSiteId++
+          existingBuildings.forEach((building) => {
+            if (constructionSiteId === building.constructionSiteId) {
+              addBuildingSprite(row, col, `/assets/Tiles/${building.type}.png`)
+            }
+          })
+          setInteractiveSpriteTile(sprite, tileWidth, tileHeight)
+          addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSiteId)
         }
-      } else {
-        console.warn('Tileset JSON missing tiles:', tilesetJson)
+        container.addChild(sprite)
       }
     }
-  }
-
-  let constructionSiteId = 0
-
-  // Render tile layers
-  for (const layer of mapData.layers) {
-    if (layer.type !== 'tilelayer') continue
-
-    const { width, data } = layer
-    const tileWidth = mapData.tilewidth
-    const tileHeight = mapData.tileheight
-
-    for (let i = 0; i < data.length; i++) {
-      const gid = data[i]
-
-      // Continue with next tile if no gid or texture on tile
-      if (!gid || !tileImageTextures[gid - 1]) continue
-
-      const row = Math.floor(i / width)
-      const col = i % width
-
-      const sprite = new Sprite(tileImageTextures[gid - 1])
-
-      sprite.anchor.set(0.5, 1)
-      sprite.x = (col - row) * (tileWidth / 2)
-      sprite.y = (col + row) * (tileHeight / 2)
-
-      if (isConstructionSiteTile(gid)) {
-        constructionSiteId++
-        setInteractiveSpriteTile(sprite, tileWidth, tileHeight)
-        addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSiteId)
-      }
-      container.addChild(sprite)
-    }
+  } catch (error) {
+    console.error(error)
   }
 
   resizeTilemap()
@@ -174,7 +168,7 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
   sprite._tileInfo = { row, col, gid, constructionSiteId }
   tileSprites.set(key, sprite)
 
-  sprite.on('pointerdown', async () => {
+  sprite.on('pointerup', async () => {
     showMenu.value = !showMenu.value
     console.log(sprite._tileInfo)
     currentTile.value = sprite._tileInfo
@@ -182,7 +176,7 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
 }
 
 function handleBuildingSelection(type) {
-  const {row,col,constructionSiteId} = currentTile.value;
+  const { row, col, constructionSiteId } = currentTile.value
   console.log(type)
   addBuildingSprite(row, col, `/assets/Tiles/${type}.png`)
 }
@@ -192,22 +186,28 @@ function handleBuildingSelection(type) {
  * @param row what row to place texture on
  * @param col what column to place texture on
  * @param texturePath what texture to add
- * @param yOffset if no offset, the new texture will be kind of off in placement. -25 happends to solve this.
+ * @param yOffset if no offset, the new texture will be kind of off in placement. -95 happens to solve this.
  * @returns {Sprite}
  */
 async function addBuildingSprite(row, col, texturePath, yOffset = -95) {
-  const { tilewidth, tileheight } = mapDataRef;
+  const { tilewidth, tileheight } = mapDataRef
 
-  const texture = await Assets.load(texturePath);
-  const building = new Sprite(texture);
+  const texture = await Assets.load(texturePath)
+  const building = new Sprite(texture)
 
-  building.anchor.set(0.5, 1); // bottom-center
-  building.x = (col - row) * (tilewidth / 2);
-  building.y = (col + row) * (tileheight / 2) + yOffset;
+  building.anchor.set(0.5, 1) // bottom-center
+  building.x = (col - row) * (tilewidth / 2)
+  building.y = (col + row) * (tileheight / 2) + yOffset
 
-  container.addChild(building); // Adds texture "on top"
+  container.addChild(building) // Adds texture "on top"
 
-  return building;
+  return building
+}
+
+function setupSprite(sprite, col, row, tileWidth, tileHeight) {
+  sprite.anchor.set(0.5, 1)
+  sprite.x = (col - row) * (tileWidth / 2)
+  sprite.y = (col + row) * (tileHeight / 2)
 }
 
 onBeforeUnmount(() => {
