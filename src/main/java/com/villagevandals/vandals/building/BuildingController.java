@@ -3,6 +3,8 @@ package com.villagevandals.vandals.building;
 import com.villagevandals.vandals.building.buildings.Building;
 import com.villagevandals.vandals.building.dto.BuildingDTO;
 import com.villagevandals.vandals.building.dto.ConstructionRequestDTO;
+import com.villagevandals.vandals.building.dto.UpgradeRequestDTO;
+import com.villagevandals.vandals.web.Message;
 import java.security.Principal;
 import java.util.List;
 import org.slf4j.Logger;
@@ -42,7 +44,7 @@ public class BuildingController {
     LOG.debug("Got a request to construct: {}", dto);
     try {
       buildingService.constructBuilding(dto);
-      return ResponseEntity.ok().build();
+      return ResponseEntity.ok(Message.of("Constructed building " + dto.type() + " successfully"));
     } catch (Exception e) {
       LOG.error(e.getMessage());
       return ResponseEntity.badRequest().body("Unable to construct building");
@@ -57,6 +59,18 @@ public class BuildingController {
       return result;
     } catch (Exception e) {
       return List.of();
+    }
+  }
+
+  @PostMapping("/upgrade")
+  public ResponseEntity<?> upgradeBuilding(
+      @RequestBody UpgradeRequestDTO dto, Principal principal) {
+    try {
+      Building upgraded = buildingService.upgradeBuilding(dto, principal.getName());
+      return ResponseEntity.ok(BuildingDTO.fromEntity(dto.constructionSiteId(), upgraded));
+    } catch (Exception e) {
+      LOG.error("Upgrade failed: {}", e.getMessage());
+      return ResponseEntity.badRequest().body("Unable to upgrade building");
     }
   }
 }
