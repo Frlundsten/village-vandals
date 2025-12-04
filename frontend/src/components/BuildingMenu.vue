@@ -1,79 +1,75 @@
 <script setup>
-import {onMounted, ref} from "vue";
-import BuildingPresentationCard from "@/components/BuildingPresentationCard.vue";
-import { BASE_URL } from '@/util/util.js'
+import { onMounted, ref } from 'vue'
+import BuildingPresentationCard from '@/components/BuildingPresentationCard.vue'
+import { constructBuilding, getAvailableBuildings } from '@/util/api/buildings.js'
 
-const availableBuildings = ref([]);
+const availableBuildings = ref([])
 
 const { tileInfo, villageId } = defineProps({
   tileInfo: Object,
-  villageId: Number
-});
+  villageId: Number,
+})
 
 const emit = defineEmits(['buildingType', 'closeMenu'])
 
 async function sendInfo(type, upgradeCost, tileInfo) {
   try {
-    const response = await fetch(`${BASE_URL}/building`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
-      },
-      body: JSON.stringify({
-        type: type,
-        constructionSiteId: tileInfo.constructionSiteId,
-        villageId: villageId,
-        upgradeCost: upgradeCost,
-      }),
-    });
+    const response = await constructBuilding(
+      type,
+      tileInfo.constructionSiteId,
+      villageId,
+      upgradeCost,
+    )
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    if (response.ok) {
+      emit('buildingType', type)
     }
-
-    emit('buildingType',type);
-
   } catch (error) {
-    console.error("Failed to create building:", error);
+    console.error('Failed to create building:', error)
   }
 }
 
 onMounted(async () => {
   try {
-    const response = await fetch(`${BASE_URL}/building/available?villageId=1`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch buildings');
-    }
-
-    availableBuildings.value = await response.json();
-
+    availableBuildings.value = await getAvailableBuildings(villageId)
   } catch (e) {
-    console.error('Error fetching buildings:', e);
+    console.error('Error fetching buildings:', e)
   }
 })
 </script>
-
 <template>
-  <div class="card bg-base-100 shadow-[1px_2px_2px_rgba(0,0,0,0.9)]">
-    <div class="card-body">
-      <div class="card-actions">
-        <div v-for="building in availableBuildings" :key="building.type">
-          <BuildingPresentationCard
-            @click="sendInfo(building.type, building.upgradeCost, tileInfo)"
-            class="hover:cursor-pointer"
-            :type="building.type"
-            :upgradeCost="building.upgradeCost"
-          />
+  <!-- Overlay for fullscreen modal style -->
+  <div class="fixed inset-0 flex items-center justify-center z-50 p-2">
+    <div
+      class="card w-full max-w-3xl h-5/6 bg-base-100 shadow-2xl rounded-xl overflow-y-auto flex flex-col"
+    >
+      <!-- Header -->
+      <div class="card-body flex-1 flex flex-col">
+        <h2 class="text-2xl font-bold text-center mb-4">Available Buildings</h2>
+
+        <!-- Building grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 flex-1">
+          <div
+            v-for="building in availableBuildings"
+            :key="building.type"
+            class="hover:scale-105 transition-transform duration-200"
+          >
+            <BuildingPresentationCard
+              @click="sendInfo(building.type, building.upgradeCost, tileInfo)"
+              :type="building.type"
+              :upgradeCost="building.upgradeCost"
+            />
+          </div>
         </div>
       </div>
+
+      <!-- Close button -->
+      <button
+        @click="emit('closeMenu')"
+        class="btn btn-success w-full mt-4 rounded-b-xl"
+      >
+        Close
+      </button>
     </div>
-    <button @click="emit('closeMenu')" class="btn border-t-neutral-400 btn-success">Close</button>
   </div>
 </template>
