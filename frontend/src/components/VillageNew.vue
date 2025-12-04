@@ -12,7 +12,7 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { Application, Assets, Container, Rectangle, Sprite } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Rectangle, Sprite } from 'pixi.js'
 import mapUrl from '@/assets/maps/vv.json?url'
 import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
@@ -29,26 +29,31 @@ const showMenu = ref(false)
 
 const currentTile = ref({})
 
+let dragging = false
+let dragStart = { x: 0, y: 0 }
+let containerStart = { x: 0, y: 0 }
+let dragTimer = null
+const DRAG_DELAY = 500 // ms
+
 function resizeTilemap() {
   if (!app || !container || !mapDataRef) return
 
-  const { width, height } = app.renderer
+  const { width: canvasWidth, height: canvasHeight } = app.renderer
 
-  const isoWidth = (mapDataRef.width + mapDataRef.height) * (mapDataRef.tilewidth / 2)
-  const isoHeight = (mapDataRef.width + mapDataRef.height) * (mapDataRef.tileheight / 2)
+  const bounds = container.getLocalBounds()
+  const mapWidth = bounds.width
+  const mapHeight = bounds.height
 
-  const scaleX = width / isoWidth
-  const scaleY = height / isoHeight
-  const scale = Math.min(scaleX, scaleY) * 2 // multiply by 2 if you want bigger zoom
+  // Fit the map to viewport
+  const scaleX = canvasWidth / mapWidth
+  const scaleY = canvasHeight / mapHeight
+  const scale = Math.min(scaleX, scaleY, 1) // Prevent overscaling on large screens
 
   container.scale.set(scale)
 
-  // Center the isometric map, adjust for its origin offset (because your anchor points are set on tiles)
-  container.x = width / 2
-  container.y = height / 2
-
-  // Add a small offset up to move the map fully into view:
-  container.y -= (isoHeight * scale) / 2.5 // tweak this as needed
+  // Pivot center for easy panning
+  container.pivot.set(bounds.x + mapWidth / 2, bounds.y + mapHeight / 2)
+  container.position.set(canvasWidth / 2, canvasHeight / 2)
 }
 
 onMounted(async () => {
@@ -123,10 +128,49 @@ onMounted(async () => {
         container.addChild(sprite)
       }
     }
+    const bounds = container.getLocalBounds()
+
+    const dragLayer = new Graphics()
+    dragLayer.beginFill(0x000000, 0)
+    dragLayer.drawRect(bounds.x, bounds.y, bounds.width, bounds.height)
+    dragLayer.endFill()
+
+    dragLayer.interactive = true
+    dragLayer.cursor = 'grab'
+
+// Add behind tiles
+    container.addChildAt(dragLayer, 0)
+
+    dragLayer.on('pointerdown', (event) => {
+      dragStart = event.data.global.clone()
+      containerStart = { x: container.x, y: container.y }
+
+      dragTimer = setTimeout(() => {
+        dragging = true
+        dragLayer.cursor = 'grabbing'
+      }, DRAG_DELAY)
+    })
+
+    const stopDrag = () => {
+      clearTimeout(dragTimer)
+      dragging = false
+      dragLayer.cursor = 'grab'
+    }
+
+    dragLayer.on('pointerup', stopDrag)
+    dragLayer.on('pointerupoutside', stopDrag)
+
+    dragLayer.on('pointermove', (event) => {
+      if (!dragging) return
+
+      const current = event.data.global
+      container.x = containerStart.x + (current.x - dragStart.x)
+      container.y = containerStart.y + (current.y - dragStart.y)
+    })
   } catch (error) {
     console.error(error)
   }
-
+  // enableDragging()
   resizeTilemap()
   window.addEventListener('resize', resizeTilemap)
 })
@@ -155,7 +199,7 @@ function setInteractiveSpriteTile(sprite, tileWidth, tileHeight) {
 
 /**
  * This function adds data to a specific tile/sprite.
- * This data makes the tile interactive och processable.
+ * This data makes the tile interactive and processable.
  * @param tileSprites tilesprite map
  * @param sprite current sprite
  * @param row what row in the map that the tile is located at
@@ -178,7 +222,7 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
 function handleBuildingSelection(type) {
   const { row, col, constructionSiteId } = currentTile.value
   console.log(type)
-  addBuildingSprite(row, col, `/assets/Tiles/${type}.png`)
+  addBuildingSprite(row, col, `/assets/Tiles/${type}.png`, constructionSiteId)
 }
 
 /**
@@ -189,7 +233,7 @@ function handleBuildingSelection(type) {
  * @param yOffset if no offset, the new texture will be kind of off in placement. -95 happens to solve this.
  * @returns {Sprite}
  */
-async function addBuildingSprite(row, col, texturePath, yOffset = -95) {
+async function addBuildingSprite(row, col, texturePath, constructionSiteId, yOffset = -95) {
   const { tilewidth, tileheight } = mapDataRef
 
   const texture = await Assets.load(texturePath)
@@ -200,6 +244,13 @@ async function addBuildingSprite(row, col, texturePath, yOffset = -95) {
   building.y = (col + row) * (tileheight / 2) + yOffset
 
   container.addChild(building) // Adds texture "on top"
+  building.interactive = true
+  building.on('pointerup', async () => {
+    console.log(`clicked
+    x: ${building.x}
+    y: ${building.y}
+    with constructionsiteId: ${constructionSiteId} `)
+  })
 
   return building
 }

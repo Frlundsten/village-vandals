@@ -33,10 +33,10 @@
 
 <script setup>
 import {onMounted, ref} from 'vue'
+import { fetchUsers } from '@/util/api/villages.js'
 
 const gridSize = 10
 const defaultColor = '#ffffff'
-const selectedColor = ref('#4caf50')
 const zoom = ref(1)
 const translate = ref({ x: 0, y: 0 })
 const origin = ref({ x: 0, y: 0 })
@@ -44,13 +44,26 @@ const origin = ref({ x: 0, y: 0 })
 const wrapperRef = ref(null)
 
 const tiles = ref(
-    Array(gridSize * gridSize).fill().map(() => ({
+  Array.from({ length: gridSize * gridSize }, (_, index) => {
+    const row = Math.floor(index / gridSize)
+    const col = index % gridSize
+    return {
+      row,
+      col,
       color: defaultColor,
-    }))
+    }
+  })
 )
 
+const tileMap = new Map();
+
+tiles.value.forEach(tile => {
+  tileMap.set(`${tile.row}-${tile.col}`, tile)
+})
+
 function colorTile(index) {
-  tiles.value[index].color = selectedColor.value
+  const tile = tiles.value[index]
+  console.log(`Tile at row ${tile.row}, col ${tile.col}`)
 }
 
 function getX(index) {
@@ -65,11 +78,23 @@ function getY(index) {
   return (x + y) * 20
 }
 
-
 const tileWidth = 80
 const tileHeight = 80
 
-onMounted(() => {
+onMounted(async () => {
+
+  //fetch all players villages.
+  const users = await fetchUsers();
+  console.log(users)
+
+  users.forEach(village => {
+    const key = `${village.y}-${village.x}`; // row-col
+    const tile = tileMap.get(key);
+    if (tile) {
+      tile.color = '#f44336'; // mark as occupied
+    }
+  });
+
   // Calculate grid width and height in pixels using your isometric formulas
   const minX = getX((gridSize - 1)) // left-most
   const maxX = getX(gridSize * (gridSize - 1)) // right-most
