@@ -1,6 +1,6 @@
 package com.villagevandals.vandals.resource;
 
-import static com.villagevandals.vandals.util.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_PRODUCTION_PER_HOUR;
 
 import jakarta.persistence.Embeddable;
 
@@ -13,10 +13,6 @@ public class ResourceProduction {
 
   public int getWoodPerHour() {
     return woodPerHour;
-  }
-
-  public void setWoodPerHour(int woodPerHour) {
-    this.woodPerHour = woodPerHour;
   }
 
   public int getBricksPerHour() {
