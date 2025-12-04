@@ -5,7 +5,7 @@
     >
       <form
           class="md:w-full max-w-xs min-w-[224px] mx-auto fieldset bg-base-200 border-base-300 rounded-box w-xs border p-4"
-          @submit.prevent="registerUser"
+          @submit.prevent="registerUserData"
       >
         <label class="label">Username</label>
         <input class="input" v-model="username" placeholder="Username" required />
@@ -33,6 +33,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { registerUser } from '@/util/api/user.js'
 
 const router = useRouter()
 const username = ref('')
@@ -41,7 +42,7 @@ const password = ref('')
 const message = ref('')
 const success = ref(false)
 
-async function registerUser() {
+async function registerUserData() {
   message.value = ''
   success.value = false
 
@@ -52,11 +53,8 @@ async function registerUser() {
   }
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/user/addNewUser`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userInfo),
-    })
+
+    const response =  await registerUser(userInfo);
 
     if (response.ok) {
       message.value = 'User registered successfully! Redirecting to login...'
@@ -74,7 +72,7 @@ async function registerUser() {
       message.value = `Registration failed`
     }
   } catch (error) {
-    message.value = `Error: ${error.message}`
+    message.value = `${error.message}`
   }
 }
 </script>

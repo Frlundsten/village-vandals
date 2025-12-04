@@ -6,7 +6,6 @@ import Avatar from '@/components/Avatar.vue'
 
 import { useSessionStore } from '@/stores/pinia.js'
 import { storeToRefs } from 'pinia'
-import { BASE_URL } from '@/util/util.js'
 import { refreshStorage } from '@/util/api/resources.js'
 
 const session = useSessionStore()
