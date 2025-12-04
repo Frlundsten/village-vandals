@@ -1,6 +1,6 @@
 package com.villagevandals.vandals.building.buildings;
 
-import static com.villagevandals.vandals.building.buildings.BuildingType.LUMBERMILL;
+import static com.villagevandals.vandals.building.buildings.BuildingType.BRICKYARD;
 import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMICAL_PRODUCTION_RATE;
 
 import com.villagevandals.vandals.resource.Resource;
@@ -8,8 +8,8 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 @Entity
-@DiscriminatorValue("LUMBER_MILL")
-public class LumberMill extends AbstractEconomicBuilding {
+@DiscriminatorValue("BRICKYARD")
+public class Brickyard extends AbstractEconomicBuilding {
   @Override
   public int productionPerHour() {
     return DEFAULT_ECONOMICAL_PRODUCTION_RATE * getLevel();
@@ -17,10 +17,10 @@ public class LumberMill extends AbstractEconomicBuilding {
 
   @Override
   public Resource producedResource() {
-    return Resource.WOOD;
+    return Resource.BRICKS;
   }
 
-  public LumberMill() {
-    setType(LUMBERMILL.name());
+  public Brickyard() {
+    setType(BRICKYARD.name());
   }
 }
