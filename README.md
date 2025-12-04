@@ -45,4 +45,9 @@ Used resources: <br>
 Farmer <br>
 <a href="https://www.flaticon.com/free-icons/farmer" title="farmer icons">Farmer icons created by Amethyst prime - Flaticon</a> <br>
 LumberMill 
-<br> <a href="https://www.flaticon.com/free-icons/wood" title="wood icons">Wood icons created by imaginationlol - Flaticon</a>
+<br> <a href="https://www.flaticon.com/free-icons/wood" title="wood icons">Wood icons created by imaginationlol - Flaticon</a><br>
+Buildings
+<br>
+<a href="http://www.freepik.com">Designed by macrovector / Freepik</a><br>
+<a href="https://www.flaticon.com/free-icons/military" title="military icons">Military icons created by Umeicon - Flaticon</a><br>
+<a href="https://www.flaticon.com/free-icons/bricks" title="bricks icons">Bricks icons created by cah nggunung - Flaticon</a>
