@@ -2,6 +2,7 @@ package com.villagevandals.vandals.village;
 
 import static java.util.Objects.requireNonNull;
 
+import com.villagevandals.vandals.app.Tile;
 import com.villagevandals.vandals.resource.ResourceProduction;
 import com.villagevandals.vandals.resource.ResourceStorage;
 import com.villagevandals.vandals.user.User;
@@ -20,8 +21,8 @@ public class Village {
 
   public Village() {}
 
-  public static Village initStarterVillage(User user) {
-    return new Village(user);
+  public static Village initStarterVillage(User user, Tile tile) {
+    return new Village(user, tile);
   }
 
   /**
@@ -30,10 +31,11 @@ public class Village {
    * <p>Use this constructor when initializing a player's first village.
    *
    * @param owner the user who will be the owner of the village
+   * @param tile the tile ( coordinates ) for this village on the world map
    */
-  private Village(User owner) {
-    this.xCoordinate = generateStartingX();
-    this.yCoordinate = generateStartingY();
+  private Village(User owner, Tile tile) {
+    this.xCoordinate = tile.getCol();
+    this.yCoordinate = tile.getRow();
     this.storage = new ResourceStorage();
     this.production = new ResourceProduction();
     this.owner = requireNonNull(owner, "Must have valid owner");
@@ -52,14 +54,6 @@ public class Village {
     this.storage = new ResourceStorage();
     this.production = new ResourceProduction();
     this.owner = requireNonNull(owner, "Must have valid owner");
-  }
-
-  private int generateStartingX() {
-    return 1;
-  }
-
-  private int generateStartingY() {
-    return 1;
   }
 
   @Id
@@ -85,9 +79,9 @@ public class Village {
       ResourceProduction production) {
     this.xCoordinate = xCoordinate;
     this.yCoordinate = yCoordinate;
-    this.owner = owner;
-    this.storage = storage;
-    this.production = production;
+    this.owner = requireNonNull(owner, "Must have valid owner");
+    this.storage = requireNonNull(storage, "Storage must not be null");
+    this.production = requireNonNull(production, "Production must not be null");
   }
 
   public ResourceProduction getProduction() {
@@ -98,17 +92,17 @@ public class Village {
     return storage;
   }
 
-  public int getxCoordinate() {
+  public int getXCoordinate() {
     return xCoordinate;
   }
 
-  public int getyCoordinate() {
+  public int getYCoordinate() {
     return yCoordinate;
   }
 
   @Override
   public String toString() {
-    return "VillageResource{"
+    return "Village{"
         + "id="
         + id
         + ", xCoordinate="

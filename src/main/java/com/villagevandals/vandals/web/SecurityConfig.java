@@ -35,12 +35,11 @@ public class SecurityConfig {
         .exceptionHandling(
             e ->
                 e.authenticationEntryPoint(
-                    (request, response, authException) -> {
-                      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    }))
+                    (request, response, authException) ->
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED)))
         .authorizeHttpRequests(
             req ->
-                req.requestMatchers("/user/addNewUser", "/user/auth/generateToken")
+                req.requestMatchers("/user/register", "/user/auth/generateToken")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
