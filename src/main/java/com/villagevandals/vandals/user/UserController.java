@@ -2,13 +2,14 @@ package com.villagevandals.vandals.user;
 
 import com.villagevandals.vandals.user.dto.UserDTO;
 import com.villagevandals.vandals.user.dto.UserRegistrationDTO;
+import com.villagevandals.vandals.user.dto.UserVillageFlatDTO;
 import com.villagevandals.vandals.web.AuthRequest;
-import com.villagevandals.vandals.web.jwt.JwtService;
 import com.villagevandals.vandals.web.UserInfo;
-import java.security.Principal;
-import java.util.UUID;
-
+import com.villagevandals.vandals.web.jwt.JwtService;
 import jakarta.validation.Valid;
+import java.security.Principal;
+import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -47,11 +48,16 @@ public class UserController {
     return userService.getUserInfo(username);
   }
 
-    @GetMapping("/validate")
-    public void validateAuthentication() {
-    }
+  /** Fetch all users */
+  @GetMapping("/all")
+  public List<UserVillageFlatDTO> allUsers() {
+    return userService.getAllUsersWithVillages();
+  }
 
-  @PostMapping("/addNewUser")
+  @GetMapping("/validate")
+  public void validateAuthentication() {}
+
+  @PostMapping("/register")
   public ResponseEntity<String> addNewUser(@Valid @RequestBody UserRegistrationDTO dto) {
     UserInfo userInfo =
         new UserInfo(UUID.randomUUID(), dto.username(), dto.email(), dto.password(), "ROLE_USER");

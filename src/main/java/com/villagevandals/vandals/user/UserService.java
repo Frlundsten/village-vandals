@@ -1,12 +1,13 @@
 package com.villagevandals.vandals.user;
 
-import com.villagevandals.vandals.user.dto.UserDTO;
-import com.villagevandals.vandals.village.dto.VillageDTO;
-import com.villagevandals.vandals.village.Village;
-import com.villagevandals.vandals.web.UserInfo;
 import com.villagevandals.vandals.constructionsite.ConstructionSite;
 import com.villagevandals.vandals.constructionsite.ConstructionSiteRepository;
+import com.villagevandals.vandals.user.dto.UserDTO;
+import com.villagevandals.vandals.user.dto.UserVillageFlatDTO;
+import com.villagevandals.vandals.village.Village;
 import com.villagevandals.vandals.village.VillageService;
+import com.villagevandals.vandals.village.dto.VillageDTO;
+import com.villagevandals.vandals.web.UserInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -19,10 +20,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserService {
   private static final Logger LOG = LoggerFactory.getLogger(UserService.class);
-  UserRepository userRepository;
-  PasswordEncoder passwordEncoder;
-  VillageService villageService;
-  ConstructionSiteRepository constructionSiteRepository;
+ private final UserRepository userRepository;
+ private final PasswordEncoder passwordEncoder;
+ private final VillageService villageService;
+ private final ConstructionSiteRepository constructionSiteRepository;
 
   public UserService(
       UserRepository userRepository,
@@ -38,6 +39,9 @@ public class UserService {
   public void newUser(UserInfo userInfo) {
     if (userRepository.findByUsername(userInfo.username()).isPresent()) {
       throw new RuntimeException("Username already taken");
+    }
+    if (userRepository.findByEmail(userInfo.email()).isPresent()) {
+      throw new RuntimeException("Email already registered");
     }
 
     var user =
@@ -70,8 +74,8 @@ public class UserService {
 
     if (village.isPresent()) {
       var constructionList = new ArrayList<ConstructionSite>();
-      for (int i = 0; i < 11; i++) {
-        constructionList.add(new ConstructionSite(village.get(), null));
+      for (int villageSiteId = 1; villageSiteId < 12; villageSiteId++) {
+        constructionList.add(new ConstructionSite(village.get(), null, villageSiteId));
       }
       constructionSiteRepository.saveAll(constructionList);
     }
@@ -89,4 +93,8 @@ public class UserService {
 
     return new UserDTO(user.getId(), username, villageDTOList);
   }
+
+    public List<UserVillageFlatDTO> getAllUsersWithVillages() {
+        return userRepository.fetchAllUsersWithVillagesFlat();
+    }
 }
