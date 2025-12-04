@@ -10,6 +10,6 @@ public interface ConstructionSiteRepository extends JpaRepository<ConstructionSi
  List<ConstructionSite> findByVillageId(Long villageId);
 
     @Query("SELECT cs FROM ConstructionSite cs " +
-            "WHERE cs.id = :id AND cs.village.id = :villageId")
+            "WHERE cs.villageSiteId = :id AND cs.village.id = :villageId")
  Optional<ConstructionSite> findByIdAndVillageId(Long id, Long villageId);
 }

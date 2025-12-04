@@ -1,8 +1,9 @@
 package com.villagevandals.vandals.constructionsite;
 
-import com.villagevandals.vandals.village.Village;
 import com.villagevandals.vandals.building.buildings.Building;
+import com.villagevandals.vandals.village.Village;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -23,15 +24,19 @@ public class ConstructionSite {
   @JoinColumn(name = "village_id")
   private Village village;
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "building_id", referencedColumnName = "id", unique = true)
-    private Building building;
+  @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @JoinColumn(name = "building_id", referencedColumnName = "id", unique = true)
+  private Building building;
+
+  @Column(name = "village_site_id")
+  private int villageSiteId;
 
   public ConstructionSite() {}
 
-  public ConstructionSite(Village village, Building building) {
+  public ConstructionSite(Village village, Building building, int villageSiteId) {
     this.building = building;
     this.village = village;
+    this.villageSiteId = villageSiteId;
   }
 
   public Long getId() {
@@ -51,7 +56,10 @@ public class ConstructionSite {
   }
 
   public void setVillage(Village village) {
-      this.village = village;
+    this.village = village;
   }
 
+  public long getVillageSiteId() {
+    return villageSiteId;
+  }
 }
