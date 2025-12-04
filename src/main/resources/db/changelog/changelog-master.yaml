@@ -247,3 +247,55 @@ databaseChangeLog:
             referencedTableName: village
             referencedColumnNames: id
             onDelete: CASCADE
+
+  - changeSet:
+      id: add-village-site-id
+      author: fredrik l
+      changes:
+        - addColumn:
+            tableName: construction_site
+            columns:
+              - column:
+                  name: village_site_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: world-map
+      author: fredrik l
+      changes:
+        - createTable:
+            tableName: map_tiles
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: row
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: col
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occupied
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+        - addUniqueConstraint:
+            tableName: map_tiles
+            columnNames: row, col
+            constraintName: uk_tile_row_col
+        - createIndex:
+            indexName: idx_tile_free
+            tableName: map_tiles
+            columns:
+              - column:
+                  name: occupied
