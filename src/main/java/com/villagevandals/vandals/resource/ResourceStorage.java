@@ -1,7 +1,7 @@
 package com.villagevandals.vandals.resource;
 
 import static com.villagevandals.vandals.resource.Resource.*;
-import static com.villagevandals.vandals.util.GameDefaults.DEFAULT_STARTING_RESOURCE_COUNT;
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_STARTING_RESOURCE_COUNT;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
