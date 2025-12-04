@@ -1,24 +1,30 @@
-import { BASE_URL } from '@/util/util.js'
+import { apiRequest } from '@/util/api/api.js'
 
 export async function fetchBuildings(villageId) {
-  try {
-    const response = await fetch(
-      `${BASE_URL}/building?villageId=${villageId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem("jwt_token")}`,
-        },
-      }
-    )
+  return apiRequest(`/building?villageId=${villageId}`)
+}
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch buildings')
-    }
+export async function upgradeBuilding(villageId, buildingId) {
+  return apiRequest(`/building/upgrade`, {
+    method: 'POST',
+    body: { villageId, buildingId },
+  })
+}
 
-    return await response.json()
-  } catch (e) {
-    console.error('Error fetching buildings:', e)
-  }
+export async function constructBuilding(type, constructionSiteId, villageId, upgradeCost) {
+  return apiRequest(`/building`, {
+    method: 'POST',
+    body: {
+      type: type,
+      constructionSiteId: constructionSiteId,
+      villageId: villageId,
+      upgradeCost: upgradeCost,
+    },
+  })
+}
+
+export async function getAvailableBuildings(villageId) {
+  return apiRequest(`/building/available?villageId=${villageId}`, {
+    method: 'GET',
+  })
 }
