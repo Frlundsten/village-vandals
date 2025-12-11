@@ -119,7 +119,7 @@ onMounted(async () => {
           constructionSiteId++
           existingBuildings.forEach((building) => {
             if (constructionSiteId === building.constructionSiteId) {
-              addBuildingSprite(row, col, `/assets/Tiles/${building.type}.png`)
+              addBuildingSprite(row, col, `/assets/Tiles/${building.type}.png`, building.constructionSiteId)
             }
           })
           setInteractiveSpriteTile(sprite, tileWidth, tileHeight)
