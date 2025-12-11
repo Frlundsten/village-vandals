@@ -13,6 +13,8 @@ const { tileInfo, villageId } = defineProps({
 const emit = defineEmits(['buildingType', 'closeMenu'])
 
 async function sendInfo(type, upgradeCost, tileInfo) {
+  emit('buildingType', type)
+  emit('closeMenu')
   try {
     const response = await constructBuilding(
       type,
@@ -20,10 +22,6 @@ async function sendInfo(type, upgradeCost, tileInfo) {
       villageId,
       upgradeCost,
     )
-
-    if (response.ok) {
-      emit('buildingType', type)
-    }
   } catch (error) {
     console.error('Failed to create building:', error)
   }
