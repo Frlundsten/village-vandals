@@ -46,20 +46,28 @@ watch(isAuthenticated, (loggedIn) => {
 })
 
 async function loadUserData() {
+  if (!isAuthenticated.value) return
+
   try {
-    currentVillage.value.id = localStorage.getItem('villageId')
-    currentVillage.value.name = localStorage.getItem('villageName')
-    resources.value = await refreshStorage(currentVillage.value.id)
+    const id = localStorage.getItem('villageId')
+    const name = localStorage.getItem('villageName')
+
+    if (!id) return
+
+    currentVillage.value.id = id
+    currentVillage.value.name = name
+
+    resources.value = await refreshStorage(id)
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     clearUserData()
-    await router.push('/login')
+    console.error(error)
   }
 }
 
 function clearUserData() {
   player.value = { name: '' }
-  currentVillage.value = {id: 0, name: '' }
+  currentVillage.value = { id: 0, name: '' }
   resources.value = { food: 0, wood: 0, bricks: 0, iron: 0 }
 }
 

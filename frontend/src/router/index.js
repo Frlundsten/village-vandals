@@ -18,13 +18,14 @@ const router = createRouter({
         {
           name: '-',
           path: '',
-          redirect: '/village',
+          redirect: { name: 'village' },
+          meta: { requiresAuth: true }
         },
         {
           path: 'village/:villageId',
           name: 'Village',
           component: VillageNew,
-          // props: (route) => ({ villageId: Number(route.params.villageId) }),
+          meta: { requiresAuth: true }
         },
         {
           path: 'map',
@@ -58,14 +59,16 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const session = useSessionStore()
 
-  if (to.meta.requiresAuth && !session.isAuthenticated) {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+  if (requiresAuth && !session.isAuthenticated) {
     return next('/login')
   }
 
-  return next()
+  next()
 })
 
 export default router
