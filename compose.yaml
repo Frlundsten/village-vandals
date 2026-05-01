@@ -4,7 +4,7 @@ services:
     environment:
       - POSTGRES_DB=vandals
       - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
       - "5432:5432"
 
@@ -13,16 +13,21 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: user
-      DB_PASSWORD: password
+      DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: vandals
-      SECRET:
+      SECRET: ${SECRET}
+      KEYCLOAK_BASE_URL: "http://keycloak:8080"
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      APP_SECURE_COOKIE: "false"
     depends_on:
       - db
+      - keycloak
 
   frontend:
     build:
@@ -32,3 +37,19 @@ services:
       - "80:80"
     depends_on:
       - backend
+
+  keycloak:
+    build:
+      context: .
+      dockerfile: Dockerfile.keycloak
+    container_name: keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    command: start-dev --import-realm
+    volumes:
+      - ./themes:/opt/keycloak/themes
+      - ./providers:/opt/keycloak/providers
+    restart: unless-stopped

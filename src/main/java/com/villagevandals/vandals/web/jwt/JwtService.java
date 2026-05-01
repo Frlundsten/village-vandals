@@ -8,9 +8,11 @@ import io.jsonwebtoken.security.Keys;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -18,10 +20,18 @@ import org.springframework.stereotype.Component;
 public class JwtService {
 
   @Value("${jwt.secret}")
-  public String SECRET;
+  private String SECRET;
 
-  public String generateToken(String username) {
+  private static final long ACCESS_EXP_MS = 1000 * 60 * 30;
+
+  public String generateToken(UserDetails userDetails) {
+    return generateTokenWithUsername(userDetails.getUsername());
+  }
+
+  public String generateTokenWithUsername(String username) {
     Map<String, Object> claims = new HashMap<>();
+    // Always assign ROLE_USER for now
+    claims.put("roles", List.of("ROLE_USER"));
     return createToken(claims, username);
   }
 
@@ -30,7 +40,7 @@ public class JwtService {
         .setClaims(claims)
         .setSubject(username)
         .setIssuedAt(new Date())
-        .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 30))
+        .setExpiration(new Date(System.currentTimeMillis() + ACCESS_EXP_MS))
         .signWith(getSignKey(), SignatureAlgorithm.HS256)
         .compact();
   }
@@ -57,12 +67,12 @@ public class JwtService {
     return Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token).getBody();
   }
 
-  private Boolean isTokenExpired(String token) {
+  public Boolean isTokenExpired(String token) {
     return extractExpiration(token).before(new Date());
   }
 
-  public Boolean validateToken(String token, UserDetails userDetails) {
-    final String username = extractUsername(token);
-    return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+  @SuppressWarnings("unchecked")
+  public List<String> extractRoles(String token) {
+    return extractClaim(token, claims -> (List<String>) claims.get("roles"));
   }
 }
