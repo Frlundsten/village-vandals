@@ -36,6 +36,11 @@ public class UserService {
     this.constructionSiteRepository = constructionSiteRepository;
   }
 
+  /**
+   * Registers a new account, creates a starter village, and populates 11 construction sites.
+   *
+   * @throws RuntimeException if the username or email is already taken
+   */
   public void newUser(UserInfo userInfo) {
     if (userRepository.findByUsername(userInfo.username()).isPresent()) {
       throw new RuntimeException("Username already taken");
@@ -81,6 +86,25 @@ public class UserService {
     }
   }
 
+  /**
+   * Provisions a local account for a Keycloak-authenticated user on first SSO login.
+   * No-ops if the username already exists, making it safe to call on every OAuth callback.
+   * Falls back to {@code username@keycloak.local} when no email is provided.
+   */
+  public void provisionKeycloakUser(String username, String email) {
+    if (userRepository.findByUsername(username).isPresent()) {
+      return;
+    }
+    String resolvedEmail = (email != null && !email.isBlank()) ? email : username + "@keycloak.local";
+    UserInfo userInfo = new UserInfo(UUID.randomUUID(), username, resolvedEmail, UUID.randomUUID().toString(), "ROLE_USER");
+    newUser(userInfo);
+  }
+
+  /**
+   * Returns the profile and village list for the given username.
+   *
+   * @throws RuntimeException if the username is not found
+   */
   public UserDTO getUserInfo(String username) {
     LOG.debug("Getting user info for username {}", username);
 
@@ -94,6 +118,9 @@ public class UserService {
     return new UserDTO(user.getId(), username, villageDTOList);
   }
 
+  /**
+   * Returns a flat projection of every user paired with their village, used to populate the world map.
+   */
     public List<UserVillageFlatDTO> getAllUsersWithVillages() {
         return userRepository.fetchAllUsersWithVillagesFlat();
     }

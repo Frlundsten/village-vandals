@@ -30,13 +30,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Validate potential bearer in the request. This will fail if the jwt is malformed/invalid.
-   *
-   * @param request
-   * @param response
-   * @param filterChain
-   * @throws ServletException
-   * @throws IOException
+   * Extracts and validates the Bearer JWT from the {@code Authorization} header.
+   * Populates the {@link SecurityContextHolder} on success so downstream filters and
+   * controllers can resolve the authenticated principal. Responds with 401 and short-circuits
+   * the filter chain if the token is expired or malformed; passes through silently if no
+   * {@code Authorization} header is present (letting Spring Security handle it).
    */
   @Override
   protected void doFilterInternal(

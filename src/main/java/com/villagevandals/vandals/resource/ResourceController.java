@@ -21,7 +21,7 @@ public class ResourceController {
 
   @GetMapping
   Map<String, Integer> handleResourceAction(@RequestParam("villageId") long villageId) {
-    ResourceStorage storage = resourcesService.getCurrentResourceStorage(villageId);
+    ResourceStorage storage = resourcesService.refreshAndPersist(villageId);
     Map<String, Integer> resources = new HashMap<>();
     resources.put("wood", storage.get(WOOD));
     resources.put("iron", storage.get(IRON));

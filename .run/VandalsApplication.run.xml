@@ -1,0 +1,18 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="VandalsApplication" type="Application" factoryName="Application" nameIsGenerated="true">
+    <envs>
+      <env name="SECRET" value="76121e902cc46a80eb5c555db0c111dddf4848ddb8dd80a51a94b96bd61823c00860f7ba504ac610f363ac23403524d74bf8fd6ac0f3fc82f0c84560f1b3e0e6" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="com.villagevandals.vandals.VandalsApplication" />
+    <module name="vandals" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="com.villagevandals.vandals.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -19,6 +19,12 @@ public class VillageService {
     this.tileRepository = tileRepository;
   }
 
+  /**
+   * Claims a random free map tile and initialises a starter village for the user on it.
+   * The tile is marked occupied atomically so concurrent registrations cannot claim the same tile.
+   *
+   * @throws RuntimeException if no free tiles are available
+   */
   @Transactional
   public Village starterVillage(User user) {
     Tile tile =
@@ -30,6 +36,9 @@ public class VillageService {
       return initStarterVillage(user, tile);
   }
 
+  /**
+   * Returns the village owned by {@code owner}, or empty if none has been created yet.
+   */
   public Optional<Village> getStarterVillage(User owner) {
     return villageRepository.findByOwner(owner);
   }

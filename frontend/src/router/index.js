@@ -1,10 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import World from '@/views/WorldView.vue'
-import LoginView from '@/views/LoginView.vue'
 import { useSessionStore } from '@/stores/pinia.js'
 import RegisterView from '@/views/RegisterView.vue'
 import VillageNew from '@/components/VillageNew.vue'
+import LoginOrRegister from '@/views/LoginOrRegister.vue'
+import AuthView from '@/views/AuthView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,7 +45,12 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: LoginView,
+      component: LoginOrRegister,
+    },
+    {
+      path: '/auth',
+      name: 'auth',
+      component: AuthView,
     },
     {
       path: '/register',

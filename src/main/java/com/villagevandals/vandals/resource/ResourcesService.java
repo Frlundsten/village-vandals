@@ -10,9 +10,11 @@ import com.villagevandals.vandals.building.buildings.EconomicProduction;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ResourcesService {
@@ -24,10 +26,19 @@ public class ResourcesService {
     this.repository = repository;
   }
 
+  /**
+   * Increases the village's production rate by the building's full production value.
+   * Called when a new economic building is first constructed.
+   */
   public void updateProduction(EconomicProduction building, long villageId) {
     updateProductionDelta(building, villageId, building.productionPerHour());
   }
 
+  /**
+   * Applies an arbitrary {@code delta} to the village's production rate for the resource produced
+   * by {@code building}. Used during upgrades where only the incremental gain should be added
+   * rather than the building's full production value.
+   */
   public void updateProductionDelta(EconomicProduction building, long villageId, int delta) {
     switch (building.producedResource()) {
       case WOOD -> repository.increaseWoodProduction(villageId, delta);
@@ -39,40 +50,88 @@ public class ResourcesService {
     }
   }
 
+  /**
+   * Calculates the current resource amounts based on elapsed time since the last snapshot
+   * without writing anything to the database. Use for display purposes.
+   */
   public ResourceStorage getCurrentResourceStorage(long villageId) {
+    var village = repository.findById(villageId)
+        .orElseThrow(() -> new IllegalArgumentException("Village not found"));
+    return calculateStorage(village.getStorage(), village.getProduction(), Instant.now());
+  }
 
-    LOG.debug("Calculating storage resources since last time...");
-
-    var villageOpt = repository.findById(villageId);
-    LOG.debug("Find village by id {}", villageId);
-    var village = villageOpt.orElseThrow(() -> new IllegalArgumentException("Village not found"));
-
-    var storage = village.getStorage();
-    var production = village.getProduction();
-
-    LOG.debug("Storage was last updated : {}", storage.getLastUpdate());
+  /**
+   * Calculates resources accumulated since the last update, writes them to the database,
+   * and advances {@code lastUpdate} to now. Call this before any cost deduction to ensure
+   * the stored balance reflects the true current amount.
+   */
+  @Transactional
+  public ResourceStorage refreshAndPersist(long villageId) {
+    LOG.debug("Refreshing and persisting storage for village {}", villageId);
+    var village = repository.findById(villageId)
+        .orElseThrow(() -> new IllegalArgumentException("Village not found"));
 
     Instant now = Instant.now();
+    ResourceStorage storage = village.getStorage();
+    ResourceStorage updated = calculateStorage(storage, village.getProduction(), now);
+
+    storage.set(WOOD, updated.get(WOOD));
+    storage.set(BRICKS, updated.get(BRICKS));
+    storage.set(IRON, updated.get(IRON));
+    storage.set(FOOD, updated.get(FOOD));
+    storage.setLastUpdate(now);
+
+    repository.save(village);
+    return storage;
+  }
+
+  /**
+   * Snapshots the current resource state to the database. Delegates to {@link #refreshAndPersist}.
+   * Exists as a named alias to make call sites in the construction flow self-documenting.
+   */
+  @Transactional
+  public void snapshotCurrentResources(long villageId) {
+    refreshAndPersist(villageId);
+  }
+
+  /**
+   * Deducts the given resource costs from the village's stored balance.
+   * Validates that all resources are sufficient before applying any deduction —
+   * either all costs are applied or none are.
+   *
+   * @throws IllegalArgumentException if any resource balance is insufficient
+   */
+  @Transactional
+  public void deductResources(long villageId, Map<Resource, Integer> cost) {
+    var village = repository.findById(villageId)
+        .orElseThrow(() -> new IllegalArgumentException("Village not found"));
+    var storage = village.getStorage();
+
+    for (Map.Entry<Resource, Integer> entry : cost.entrySet()) {
+      int current = storage.get(entry.getKey());
+      if (current < entry.getValue()) {
+        throw new IllegalArgumentException(
+            "Insufficient " + entry.getKey().name().toLowerCase()
+            + ": need " + entry.getValue() + ", have " + current);
+      }
+    }
+
+    for (Map.Entry<Resource, Integer> entry : cost.entrySet()) {
+      storage.set(entry.getKey(), storage.get(entry.getKey()) - entry.getValue());
+    }
+
+    repository.save(village);
+  }
+
+  private ResourceStorage calculateStorage(ResourceStorage storage, com.villagevandals.vandals.resource.ResourceProduction production, Instant now) {
     long secondsSinceLastUpdate = Duration.between(storage.getLastUpdate(), now).getSeconds();
 
-    // Calculate produced resources since last update
-    int producedWood =
-        amountProducedSinceLastUpdate(production.getWoodPerHour(), secondsSinceLastUpdate);
-    int producedBricks =
-        amountProducedSinceLastUpdate(production.getBricksPerHour(), secondsSinceLastUpdate);
-    int producedIron =
-        amountProducedSinceLastUpdate(production.getIronPerHour(), secondsSinceLastUpdate);
-    int producedFood =
-        amountProducedSinceLastUpdate(production.getFoodPerHour(), secondsSinceLastUpdate);
-
-    ResourceStorage storageCopy = new ResourceStorage();
-    storageCopy.set(WOOD, updateAmount(storage.get(WOOD), producedWood));
-    storageCopy.set(BRICKS, updateAmount(storage.get(BRICKS), producedBricks));
-    storageCopy.set(IRON, updateAmount(storage.get(IRON), producedIron));
-    storageCopy.set(FOOD, updateAmount(storage.get(FOOD), producedFood));
-    storageCopy.setLastUpdate(now);
-
-    return storageCopy;
+    ResourceStorage result = new ResourceStorage();
+    result.set(WOOD, updateAmount(storage.get(WOOD), amountProducedSinceLastUpdate(production.getWoodPerHour(), secondsSinceLastUpdate)));
+    result.set(BRICKS, updateAmount(storage.get(BRICKS), amountProducedSinceLastUpdate(production.getBricksPerHour(), secondsSinceLastUpdate)));
+    result.set(IRON, updateAmount(storage.get(IRON), amountProducedSinceLastUpdate(production.getIronPerHour(), secondsSinceLastUpdate)));
+    result.set(FOOD, updateAmount(storage.get(FOOD), amountProducedSinceLastUpdate(production.getFoodPerHour(), secondsSinceLastUpdate)));
+    return result;
   }
 
   private int updateAmount(int storedAmount, int producedAmount) {

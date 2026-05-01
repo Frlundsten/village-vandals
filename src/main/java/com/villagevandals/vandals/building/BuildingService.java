@@ -48,6 +48,14 @@ public class BuildingService {
     this.constructionSiteRepository = constructionSiteRepository;
   }
 
+  /**
+   * Constructs a building on an empty construction site.
+   * Snapshots current resources, validates the site is unoccupied, deducts the construction cost,
+   * persists the building, and updates village production if the building is economic.
+   *
+   * @throws IllegalArgumentException if the village or site is not found, the site is already
+   *     occupied, or resources are insufficient
+   */
   @Transactional
   public void constructBuilding(ConstructionRequestDTO dto) {
 
@@ -59,6 +67,9 @@ public class BuildingService {
     Building building = getBuildingByType(dto.type());
     unpopulatedSite.setBuilding(building);
     unpopulatedSite.setVillage(village);
+    resourcesService.snapshotCurrentResources(dto.villageId());
+    resourcesService.deductResources(dto.villageId(), building.getConstructionCost());
+
     constructionSiteRepository.save(unpopulatedSite);
     if (building instanceof EconomicProduction eco) {
       resourcesService.updateProduction(eco, dto.villageId());
@@ -97,6 +108,11 @@ public class BuildingService {
     return village.orElseThrow(() -> new IllegalArgumentException("Village Not Found"));
   }
 
+  /**
+   * Returns all constructed buildings for the village keyed by construction site ID.
+   * Empty sites are excluded. Validates that {@code username} owns the village.
+   * Returns an empty map if the village has no buildings yet.
+   */
   public Map<Long, Building> getAllBuildingsByVillageId(Long villageId, String username) {
     try {
       List<ConstructionSite> siteInVillageId =
@@ -121,10 +137,21 @@ public class BuildingService {
     }
   }
 
+  /**
+   * Returns the full catalogue of building types that can be constructed.
+   * The list is static for now — village state and tech level are not yet considered.
+   */
   public List<Building> getAvailableBuildings(long villageId, String userName) {
     return List.of(new LumberMill(), new Farm(), new Barrack(), new Brickyard(), new Forge());
   }
 
+  /**
+   * Upgrades the building at the given construction site and updates the village's production
+   * rate by the incremental delta. Only the authenticated owner may upgrade buildings.
+   *
+   * @throws IllegalArgumentException if the site is not found or {@code username} is not the owner
+   * @throws IllegalStateException if there is no building at the site
+   */
   @Transactional
   public Building upgradeBuilding(UpgradeRequestDTO dto, String username) {
     ConstructionSite site = getConstructionSite(dto.constructionSiteId(), dto.villageId());

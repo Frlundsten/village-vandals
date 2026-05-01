@@ -12,13 +12,15 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { Application, Assets, Container, Graphics, Rectangle, Sprite } from 'pixi.js'
 import mapUrl from '@/assets/maps/vv.json?url'
 import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
 import { fetchBuildings } from '@/util/api/buildings.js'
 
-const villageId = Number(localStorage.getItem('villageId'))
+const route = useRoute()
+const villageId = Number(route.params.villageId) || Number(localStorage.getItem('villageId'))
 
 const pixiContainer = ref(null)
 let app

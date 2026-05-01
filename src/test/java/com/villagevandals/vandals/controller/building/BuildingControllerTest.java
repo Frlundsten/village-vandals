@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.villagevandals.vandals.building.BuildingController;
@@ -52,7 +53,7 @@ class BuildingControllerTest {
                 .content(createBuildingJsonRequest())
                 .contentType(APPLICATION_JSON))
         .andExpect(status().isOk())
-        .andExpect(content().string(""));
+        .andExpect(jsonPath("$.message.message").value("Constructed building lumbermill successfully"));
   }
 
   private static Stream<Arguments> errors() {

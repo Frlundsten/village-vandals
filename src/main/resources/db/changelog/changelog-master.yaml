@@ -299,3 +299,60 @@ databaseChangeLog:
             columns:
               - column:
                   name: occupied
+
+  - changeSet:
+      id: reset-production-rates-to-zero
+      author: f
+      changes:
+        - sql:
+            sql: UPDATE village SET wood_per_hour = 0, bricks_per_hour = 0, iron_per_hour = 0, food_per_hour = 0
+        - addDefaultValue:
+            tableName: village
+            columnName: wood_per_hour
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: village
+            columnName: bricks_per_hour
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: village
+            columnName: iron_per_hour
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: village
+            columnName: food_per_hour
+            defaultValueNumeric: 0
+
+  - changeSet:
+      id: add-refresh-token-table
+      author: f
+      changes:
+        - createSequence:
+            sequenceName: refresh_token_seq
+            startValue: 1
+            incrementBy: 50
+        - createTable:
+            tableName: refresh_token
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: username
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiry_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false

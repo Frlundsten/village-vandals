@@ -7,13 +7,32 @@ import Avatar from '@/components/Avatar.vue'
 import { useSessionStore } from '@/stores/pinia.js'
 import { storeToRefs } from 'pinia'
 import { refreshStorage } from '@/util/api/resources.js'
+import { apiRequest } from '@/util/api/api.js'
 
 const session = useSessionStore()
 const router = useRouter()
 
 async function handleLogout() {
-  await session.logout()
-  await router.push('/login')
+  const keycloakIdToken = session.keycloakIdToken
+
+  try {
+    await apiRequest('/auth/logout', { method: 'POST' })
+  } catch {
+    // Proceed with local logout even if backend call fails
+  }
+
+  session.clearSession()
+
+  if (keycloakIdToken) {
+    const params = new URLSearchParams({
+      post_logout_redirect_uri: 'http://localhost:5173/login',
+      id_token_hint: keycloakIdToken,
+      client_id: 'backend-service',
+    })
+    window.location.href = `http://localhost:8080/realms/villagevandals/protocol/openid-connect/logout?${params}`
+  } else {
+    router.push('/login')
+  }
 }
 
 const player = ref({
@@ -49,19 +68,17 @@ async function loadUserData() {
   if (!isAuthenticated.value) return
 
   try {
-    const id = localStorage.getItem('villageId')
-    const name = localStorage.getItem('villageName')
+    const userData = await apiRequest('/user')
+    const village = userData.villages?.[0]
+    if (!village) return
 
-    if (!id) return
+    currentVillage.value.id = village.id
+    localStorage.setItem('villageId', village.id)
 
-    currentVillage.value.id = id
-    currentVillage.value.name = name
-
-    resources.value = await refreshStorage(id)
+    resources.value = await refreshStorage(village.id)
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     clearUserData()
-    console.error(error)
   }
 }
 

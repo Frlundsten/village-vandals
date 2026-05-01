@@ -1,0 +1,17 @@
+/* Full-page background image */
+body {
+    background: url("../img/vv.png") no-repeat center center fixed;
+    background-size: cover;
+}
+
+/* Optional: make the login card slightly transparent so text is readable */
+.login-pf-page .card-pf {
+    background-color: rgba(255, 255, 255, 0.85);
+    border-radius: 8px;
+}
+
+/* Optional: adjust logo placement */
+.login-pf-page .login-pf-branding img {
+    max-width: 200px;
+    margin-bottom: 20px;
+}

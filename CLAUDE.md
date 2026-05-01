@@ -1,0 +1,96 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Village Vandals is a full-stack browser strategy game (village builder). Spring Boot 3.5 backend, Vue 3 frontend with PixiJS tile rendering, PostgreSQL database, and optional Keycloak OAuth integration. All services run via Docker Compose.
+
+## Commands
+
+### Backend
+```bash
+mvn clean package          # Build jar
+mvn test                   # Run all tests
+mvn test -Dtest=ClassName  # Run a single test class
+```
+Backend runs on port **8081**. Java 21 with `--enable-preview` is required.
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev    # Vite dev server → http://localhost:5173
+npm run build  # Production build
+npm run format # Prettier formatting
+```
+
+### Full Stack (Docker)
+```bash
+docker compose up   # Starts PostgreSQL, Spring Boot, Vue/Nginx, Keycloak
+```
+
+### Environment Variables
+Backend reads from env: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `SECRET` (JWT secret).  
+Frontend reads `VITE_API_BASE_URL` from `frontend/.env` (default: `http://localhost:8081`).
+
+## Development Process
+
+### Test-Driven Development
+Always write tests when implementing or changing functionality. Follow this order:
+1. Write a failing test that captures the requirement
+2. Implement the minimum code to make it pass
+3. Refactor while keeping tests green
+
+Never deliver a feature or bug fix without accompanying tests.
+
+### Implementation Planning
+Before writing any code, plan the work in these steps:
+
+1. **Specify requirements** — State precisely what the feature or change must do, including edge cases and constraints.
+2. **Plan the architecture** — Identify which classes, packages, and layers are involved. Note any schema changes, new endpoints, or state management impacts.
+3. **Task decomposition** — Break the work into small, ordered, independently verifiable steps.
+4. **Implement with continuous validation** — Execute each task, run the relevant tests after every step, and confirm the output matches the stated intent before moving to the next task.
+
+## Architecture
+
+### Auth Flow
+1. `POST /auth/login` validates credentials, returns a short-lived JWT + sets an HTTP-only refresh token cookie.
+2. Frontend stores JWT in `localStorage` (`jwt_token`). `useSessionStore` (Pinia) manages the `token` and `user` state.
+3. Every API request goes through `apiRequest()` in `frontend/src/util/api/api.js`, which injects the JWT as a Bearer token and redirects to `/login` on 401.
+4. `JwtAuthFilter` validates tokens on the backend before reaching controllers.
+5. `POST /auth/refresh` issues a new JWT using the HTTP-only cookie.
+6. Optional Keycloak OAuth2 path: `/auth/callback` exchanges an authorization code for a Keycloak token, then issues an internal JWT.
+
+### Backend Package Structure
+Package root: `com.villagevandals.vandals`
+
+| Package | Responsibility |
+|---|---|
+| `web` | Security config, JWT filter/service, auth endpoints, refresh token |
+| `user` | User entity (implements `UserDetails`), registration, `/user` endpoints |
+| `village` | Village entity, resource production/storage (embedded value objects), village service |
+| `building` | Abstract `Building` base + single-table-inheritance subtypes: `Farm`, `LumberMill`, `Forge`, `Brickyard`, `Barrack` |
+| `constructionsite` | Tracks buildings currently under construction per village |
+| `resource` | Resource types (food/wood/bricks/iron) and production calculations |
+| `app` | World map tile entity and coordinate system |
+| `unit` | Military/troop system |
+| `gameconfig` | Balance constants (costs, production rates, upgrade formulas) |
+
+**Database schema** is managed by Liquibase (YAML changelogs in `src/main/resources/db/changelog/`). Schema evolves via versioned changesets — never modify the database directly.
+
+Buildings use **Hibernate single-table inheritance** (discriminator column `building_type`). `ResourceStorage` and `ResourceProduction` are **embedded** in `Village` (no separate tables).
+
+Public endpoints (no JWT required): `POST /user/register`, `POST /auth/login`, `POST /auth/callback`.
+
+### Frontend Structure
+- **Router** (`frontend/src/router/index.js`): Route guard checks `useSessionStore().isAuthenticated`; routes with `requiresAuth: true` redirect to `/login` if unauthenticated. Auth callback lands at `/auth`.
+- **State** (`frontend/src/stores/pinia.js`): `useSessionStore` — persists token to localStorage, syncs across tabs.
+- **API layer** (`frontend/src/util/api/`): All backend calls go through `apiRequest()`. Keycloak-specific calls use `keycloak-api.js`.
+- **Game rendering**: PixiJS 8 renders the village tile map and building sprites inside Vue components. The world map uses tile coordinates stored in `map_tiles`.
+
+### Key Design Decisions
+- **Stateless JWT + HTTP-only refresh cookie**: JWT for stateless REST; refresh cookie for silent renewal without exposing the long-lived token to JS.
+- **Single-table inheritance for buildings**: Simplifies queries but means all building columns live in one table.
+- **Async resource production**: Villages track production rates in the DB; resource amounts are calculated from elapsed time (checked on fetch, not via a background job per village).
+- **CORS**: Allowed origins are `localhost:80` and `localhost:5173` — will need updating for production.

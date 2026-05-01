@@ -6,6 +6,7 @@ import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMI
 import com.villagevandals.vandals.resource.Resource;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import java.util.Map;
 
 @Entity
 @DiscriminatorValue("LUMBER_MILL")
@@ -22,5 +23,10 @@ public class LumberMill extends AbstractEconomicBuilding {
 
   public LumberMill() {
     setType(LUMBERMILL.name());
+  }
+
+  @Override
+  public Map<Resource, Integer> getConstructionCost() {
+    return Map.of(Resource.FOOD, 50, Resource.BRICKS, 60);
   }
 }

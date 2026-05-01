@@ -24,10 +24,19 @@ public class JwtService {
 
   private static final long ACCESS_EXP_MS = 1000 * 60 * 30;
 
+  /**
+   * Generates a signed JWT for the given user. Embeds a {@code roles} claim and expires
+   * after {@value ACCESS_EXP_MS} ms.
+   */
   public String generateToken(UserDetails userDetails) {
     return generateTokenWithUsername(userDetails.getUsername());
   }
 
+  /**
+   * Generates a signed JWT for the given username, assigning the default ROLE_USER role.
+   * Use this when the full {@link org.springframework.security.core.userdetails.UserDetails}
+   * object is not available, such as after a Keycloak OAuth callback.
+   */
   public String generateTokenWithUsername(String username) {
     Map<String, Object> claims = new HashMap<>();
     // Always assign ROLE_USER for now
@@ -50,14 +59,24 @@ public class JwtService {
     return Keys.hmacShaKeyFor(keyBytes);
   }
 
+  /**
+   * Extracts the username ({@code sub} claim) from the token without validating expiry.
+   */
   public String extractUsername(String token) {
     return extractClaim(token, Claims::getSubject);
   }
 
+  /**
+   * Extracts the expiration date from the token without validating whether it has expired.
+   */
   public Date extractExpiration(String token) {
     return extractClaim(token, Claims::getExpiration);
   }
 
+  /**
+   * Applies {@code claimsResolver} to the verified claims of the token.
+   * Throws a JJWT exception if the token signature is invalid or the token is malformed.
+   */
   public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
     final Claims claims = extractAllClaims(token);
     return claimsResolver.apply(claims);
@@ -67,11 +86,17 @@ public class JwtService {
     return Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token).getBody();
   }
 
+  /**
+   * Returns true if the token's expiration timestamp is in the past.
+   */
   public Boolean isTokenExpired(String token) {
     return extractExpiration(token).before(new Date());
   }
 
   @SuppressWarnings("unchecked")
+  /**
+   * Extracts the {@code roles} claim as a list of role strings (e.g. {@code "ROLE_USER"}).
+   */
   public List<String> extractRoles(String token) {
     return extractClaim(token, claims -> (List<String>) claims.get("roles"));
   }

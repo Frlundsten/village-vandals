@@ -3,6 +3,7 @@ package com.villagevandals.vandals.building.buildings;
 import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_STARTING_LEVEL;
 import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_STARTING_RESOURCE_COUNT;
 
+import com.villagevandals.vandals.resource.Resource;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.Entity;
@@ -39,6 +40,8 @@ public abstract class Building {
   public void upgrade() {
     level++;
   }
+
+  public abstract Map<Resource, Integer> getConstructionCost();
 
   public Map<String, Integer> getUpgradeCost() {
     if (level == DEFAULT_STARTING_LEVEL) {

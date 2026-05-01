@@ -3,9 +3,7 @@ package com.villagevandals.vandals.user;
 import com.villagevandals.vandals.user.dto.UserDTO;
 import com.villagevandals.vandals.user.dto.UserRegistrationDTO;
 import com.villagevandals.vandals.user.dto.UserVillageFlatDTO;
-import com.villagevandals.vandals.web.AuthRequest;
 import com.villagevandals.vandals.web.UserInfo;
-import com.villagevandals.vandals.web.jwt.JwtService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
@@ -13,10 +11,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,17 +24,13 @@ public class UserController {
 
   private final UserService userService;
 
-  private final JwtService jwtService;
-
-  private final AuthenticationManager authenticationManager;
-
-  UserController(
-      UserService userService, JwtService jwtService, AuthenticationManager authenticationManager) {
+  UserController(UserService userService) {
     this.userService = userService;
-    this.jwtService = jwtService;
-    this.authenticationManager = authenticationManager;
   }
 
+  /**
+   * GET /user — returns the profile and village list for the currently authenticated user.
+   */
   @GetMapping
   public UserDTO currentUserName(Principal principal) {
     LOG.debug("Fetching user info...");
@@ -48,15 +38,17 @@ public class UserController {
     return userService.getUserInfo(username);
   }
 
-  /** Fetch all users */
+  /**
+   * GET /user/all — returns all users with their villages, used to populate the world map.
+   */
   @GetMapping("/all")
   public List<UserVillageFlatDTO> allUsers() {
     return userService.getAllUsersWithVillages();
   }
 
-  @GetMapping("/validate")
-  public void validateAuthentication() {}
-
+  /**
+   * POST /user/register — creates a new account. Returns 400 if the username or email is already taken.
+   */
   @PostMapping("/register")
   public ResponseEntity<String> addNewUser(@Valid @RequestBody UserRegistrationDTO dto) {
     UserInfo userInfo =
@@ -66,19 +58,6 @@ public class UserController {
       return ResponseEntity.ok("User created successfully");
     } catch (Exception e) {
       return ResponseEntity.badRequest().body(e.getMessage());
-    }
-  }
-
-  @PostMapping("/auth/generateToken")
-  public String authenticateAndGetToken(@RequestBody AuthRequest authRequest) {
-    Authentication authentication =
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(
-                authRequest.username(), authRequest.password()));
-    if (authentication.isAuthenticated()) {
-      return jwtService.generateToken(authRequest.username());
-    } else {
-      throw new UsernameNotFoundException("Invalid user request!");
     }
   }
 }
