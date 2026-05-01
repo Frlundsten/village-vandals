@@ -6,6 +6,7 @@ import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMI
 import com.villagevandals.vandals.resource.Resource;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import java.util.Map;
 
 @Entity
 @DiscriminatorValue("FORGE")
@@ -22,5 +23,10 @@ public class Forge extends AbstractEconomicBuilding {
 
   public Forge() {
     setType(FORGE.name());
+  }
+
+  @Override
+  public Map<Resource, Integer> getConstructionCost() {
+    return Map.of(Resource.WOOD, 80, Resource.BRICKS, 60, Resource.FOOD, 40);
   }
 }
