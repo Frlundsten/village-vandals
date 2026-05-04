@@ -5,9 +5,10 @@ import { constructBuilding, getAvailableBuildings } from '@/util/api/buildings.j
 
 const availableBuildings = ref([])
 
-const { tileInfo, villageId } = defineProps({
+const { tileInfo, villageId, currentResources } = defineProps({
   tileInfo: Object,
   villageId: Number,
+  currentResources: Object,
 })
 
 const emit = defineEmits(['buildingType', 'closeMenu'])
@@ -47,17 +48,14 @@ onMounted(async () => {
 
         <!-- Building grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 flex-1">
-          <div
+          <BuildingPresentationCard
             v-for="building in availableBuildings"
             :key="building.type"
-            class="hover:scale-105 transition-transform duration-200"
-          >
-            <BuildingPresentationCard
-              @click="sendInfo(building.type, building.upgradeCost, tileInfo)"
-              :type="building.type"
-              :upgradeCost="building.upgradeCost"
-            />
-          </div>
+            @click="sendInfo(building.type, building.upgradeCost, tileInfo)"
+            :type="building.type"
+            :upgradeCost="building.upgradeCost"
+            :currentResources="currentResources"
+          />
         </div>
       </div>
 

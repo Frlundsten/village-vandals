@@ -3,6 +3,7 @@
   <BuildingMenu
     :tileInfo="currentTile"
     :villageId="villageId"
+    :currentResources="currentResources"
     v-if="showMenu"
     :style="{ position: 'absolute', left: '40%', top: '15vh' }"
     @building-type="handleBuildingSelection"
@@ -235,6 +236,11 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
 
     showMenu.value = !showMenu.value
     currentTile.value = sprite._tileInfo
+    try {
+      currentResources.value = await refreshStorage(villageId)
+    } catch (e) {
+      console.error('Failed to fetch resources', e)
+    }
   })
 }
 

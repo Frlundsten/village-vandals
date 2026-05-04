@@ -44,13 +44,29 @@ Always write tests when implementing or changing functionality. Follow this orde
 
 Never deliver a feature or bug fix without accompanying tests.
 
-### Implementation Planning
-Before writing any code, plan the work in these steps:
+### Mandatory Spec-Driven Development Flow
 
-1. **Specify requirements** — State precisely what the feature or change must do, including edge cases and constraints.
-2. **Plan the architecture** — Identify which classes, packages, and layers are involved. Note any schema changes, new endpoints, or state management impacts.
-3. **Task decomposition** — Break the work into small, ordered, independently verifiable steps.
-4. **Implement with continuous validation** — Execute each task, run the relevant tests after every step, and confirm the output matches the stated intent before moving to the next task.
+**EVERY feature request and bug fix MUST follow this exact flow. No exceptions.**
+
+#### Step 1 — Write a Spec (STOP and wait for approval)
+Before any code, produce a spec document covering:
+- **Requirements** — what the feature/fix must do, including edge cases and constraints
+- **Acceptance criteria** — concrete, testable conditions that define "done"
+- **Architecture impact** — packages, schema changes, new endpoints, state management
+- **Out of scope** — explicitly state what this change does NOT cover
+
+Present the spec to the user. Do NOT proceed until the user explicitly approves it.
+
+#### Step 2 — Break the Spec into Tasks
+Decompose the approved spec into fine-grained tasks using `TaskCreate`. Each task must map to a single verifiable unit of work (one class, method, migration, or UI component). Present the task list for review before starting.
+
+#### Step 3 — Implement with TDD
+Execute tasks one at a time:
+1. Write a failing test that matches an acceptance criterion.
+2. Implement the minimum code to pass it.
+3. Mark the task complete, then move to the next.
+
+Never begin Step 2 without spec approval. Never begin Step 3 without the task list being complete.
 
 ## Architecture
 

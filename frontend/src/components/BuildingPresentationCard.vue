@@ -1,29 +1,68 @@
 <script setup>
-defineProps(['upgradeCost', 'type'])
+import { computed } from 'vue'
+
+const props = defineProps({
+  upgradeCost: Object,
+  type: String,
+  currentResources: Object,
+})
+
 const icons = {
   bricks: '🧱',
   wood: '🌲',
   food: '🌾',
   iron: '⚒️',
 }
+
+const labels = {
+  bricks: 'Bricks',
+  wood: 'Wood',
+  food: 'Food',
+  iron: 'Iron',
+}
+
+const canAfford = computed(() => {
+  if (!props.currentResources || !props.upgradeCost) return true
+  return Object.entries(props.upgradeCost).every(
+    ([resource, cost]) => (props.currentResources[resource] ?? 0) >= cost,
+  )
+})
 </script>
 
 <template>
   <div
-    class="shadow-lg p-4 flex flex-col items-center text-center bg-base-200 rounded-xl hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
+    class="relative flex flex-col items-center text-center bg-base-200 rounded-xl shadow-lg p-4 transition-all duration-200"
+    :class="
+      canAfford
+        ? 'cursor-pointer hover:shadow-2xl hover:scale-105'
+        : 'opacity-50 cursor-not-allowed pointer-events-none'
+    "
   >
-    <img :src="`/assets/${type}.png`" :alt="type" class="w-24 h-24 object-contain mb-2" />
+    <img :src="`/assets/${type}.png`" :alt="type" class="w-20 h-20 object-contain mb-2" />
 
-    <h3 class="text-lg sm:text-xl md:text-2xl font-semibold mb-2">{{ type }}</h3>
+    <h3 class="text-base font-bold capitalize mb-1">{{ type }}</h3>
 
-    <div class="grid grid-cols-2 gap-2 w-full">
+    <div v-if="!canAfford" class="badge badge-error badge-sm mb-2">Can't afford</div>
+
+    <div class="grid grid-cols-2 gap-1.5 w-full mt-1">
       <div
         v-for="(value, key) in upgradeCost"
         :key="key"
-        class="flex flex-col items-center justify-center border rounded-lg p-2 bg-base-100 shadow-sm"
+        class="flex flex-col items-center justify-center border rounded-lg p-1.5 bg-base-100 text-xs"
+        :class="
+          !currentResources
+            ? 'border-base-300'
+            : (currentResources[key] ?? 0) >= value
+              ? 'border-success text-success'
+              : 'border-error text-error'
+        "
       >
-        <div class="text-2xl sm:text-3xl">{{ icons[key] || '❓' }}</div>
-        <div class="text-lg sm:text-xl font-medium">{{ value }}</div>
+        <span class="text-xl">{{ icons[key] || '❓' }}</span>
+        <span class="font-semibold text-sm">{{ labels[key] || key }}</span>
+        <span class="font-bold">{{ value }}</span>
+        <span v-if="currentResources" class="opacity-60 text-xs">
+          have {{ Math.floor(currentResources[key] ?? 0) }}
+        </span>
       </div>
     </div>
   </div>
