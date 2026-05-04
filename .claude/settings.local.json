@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(mvn test *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Flund\\\\dev\\\\vb\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

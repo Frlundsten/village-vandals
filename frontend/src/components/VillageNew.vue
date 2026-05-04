@@ -8,6 +8,13 @@
     @building-type="handleBuildingSelection"
     @close-menu="showMenu = false"
   />
+  <BuildingUpgradeCard
+    v-if="showUpgradeCard && currentBuilding"
+    :building="currentBuilding"
+    :currentResources="currentResources"
+    @upgrade="handleUpgrade"
+    @close="showUpgradeCard = false"
+  />
 </template>
 
 <script setup>
@@ -17,7 +24,9 @@ import { Application, Assets, Container, Graphics, Rectangle, Sprite } from 'pix
 import mapUrl from '@/assets/maps/vv.json?url'
 import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
-import { fetchBuildings } from '@/util/api/buildings.js'
+import BuildingUpgradeCard from '@/components/BuildingUpgradeCard.vue'
+import { fetchBuildings, upgradeBuilding } from '@/util/api/buildings.js'
+import { refreshStorage } from '@/util/api/resources.js'
 
 const route = useRoute()
 const villageId = Number(route.params.villageId) || Number(localStorage.getItem('villageId'))
@@ -28,8 +37,13 @@ let container
 let mapDataRef = null
 
 const showMenu = ref(false)
-
+const showUpgradeCard = ref(false)
 const currentTile = ref({})
+const currentBuilding = ref(null)
+const currentResources = ref(null)
+
+// Reactive map of constructionSiteId -> BuildingDTO for all placed buildings
+const buildingsBySiteId = ref(new Map())
 
 let dragging = false
 let dragStart = { x: 0, y: 0 }
@@ -61,6 +75,7 @@ function resizeTilemap() {
 onMounted(async () => {
   try {
     const existingBuildings = await fetchBuildings(villageId)
+    existingBuildings.forEach((b) => buildingsBySiteId.value.set(b.constructionSiteId, b))
 
     const tileSprites = new Map()
     app = new Application()
@@ -215,15 +230,16 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
   tileSprites.set(key, sprite)
 
   sprite.on('pointerup', async () => {
+    // If a building already exists on this site the building sprite handles the click
+    if (buildingsBySiteId.value.has(constructionSiteId)) return
+
     showMenu.value = !showMenu.value
-    console.log(sprite._tileInfo)
     currentTile.value = sprite._tileInfo
   })
 }
 
 function handleBuildingSelection(type) {
   const { row, col, constructionSiteId } = currentTile.value
-  console.log(type)
   addBuildingSprite(row, col, `/assets/Tiles/${type}.png`, constructionSiteId)
 }
 
@@ -232,6 +248,7 @@ function handleBuildingSelection(type) {
  * @param row what row to place texture on
  * @param col what column to place texture on
  * @param texturePath what texture to add
+ * @param constructionSiteId site this building belongs to
  * @param yOffset if no offset, the new texture will be kind of off in placement. -95 happens to solve this.
  * @returns {Sprite}
  */
@@ -248,13 +265,33 @@ async function addBuildingSprite(row, col, texturePath, constructionSiteId, yOff
   container.addChild(building) // Adds texture "on top"
   building.interactive = true
   building.on('pointerup', async () => {
-    console.log(`clicked
-    x: ${building.x}
-    y: ${building.y}
-    with constructionsiteId: ${constructionSiteId} `)
+    const buildingData = buildingsBySiteId.value.get(constructionSiteId)
+    if (!buildingData) return
+    currentBuilding.value = buildingData
+    showUpgradeCard.value = true
+    showMenu.value = false
+    try {
+      currentResources.value = await refreshStorage(villageId)
+    } catch (e) {
+      console.error('Failed to fetch resources', e)
+    }
   })
 
   return building
+}
+
+async function handleUpgrade(constructionSiteId) {
+  try {
+    await upgradeBuilding(villageId, constructionSiteId)
+    const updated = await fetchBuildings(villageId)
+    buildingsBySiteId.value = new Map(updated.map((b) => [b.constructionSiteId, b]))
+    currentBuilding.value = buildingsBySiteId.value.get(constructionSiteId) ?? null
+    currentResources.value = await refreshStorage(villageId)
+  } catch (e) {
+    console.error('Upgrade failed', e)
+  } finally {
+    showUpgradeCard.value = false
+  }
 }
 
 function setupSprite(sprite, col, row, tileWidth, tileHeight) {

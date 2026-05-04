@@ -160,6 +160,9 @@ public class BuildingService {
 
     Building building = getBuildingToUpgrade(site);
 
+    resourcesService.snapshotCurrentResources(dto.villageId());
+    resourcesService.deductResources(dto.villageId(), building.getUpgradeCostAsResourceMap());
+
     int delta = upgradeAndGetProductionDelta(building);
 
     buildingRepository.save(building);

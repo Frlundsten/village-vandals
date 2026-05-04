@@ -9,11 +9,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.villagevandals.vandals.building.buildings.Building;
 import com.villagevandals.vandals.building.buildings.Farm;
 import com.villagevandals.vandals.building.buildings.LumberMill;
 import com.villagevandals.vandals.building.dto.ConstructionRequestDTO;
-import java.security.Principal;
+import com.villagevandals.vandals.building.dto.UpgradeRequestDTO;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +43,8 @@ class BuildingControllerTest {
                 .contentType(APPLICATION_JSON)
                 .content("{\"type\":\"LUMBERMILL\",\"constructionSiteId\":1,\"villageId\":1}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.message.message").value("Constructed building LUMBERMILL successfully"));
+        .andExpect(
+            jsonPath("$.message.message").value("Constructed building LUMBERMILL successfully"));
   }
 
   @Test
@@ -105,5 +105,50 @@ class BuildingControllerTest {
     mvc.perform(get("/building").param("villageId", "1").principal(() -> "user"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2));
+  }
+
+  @Test
+  void upgradeBuilding_success_returns200WithDTO() throws Exception {
+    Farm upgraded = new Farm();
+    upgraded.upgrade();
+    when(buildingService.upgradeBuilding(any(UpgradeRequestDTO.class), any())).thenReturn(upgraded);
+
+    mvc.perform(
+            post("/building/upgrade")
+                .contentType(APPLICATION_JSON)
+                .content("{\"villageId\":1,\"constructionSiteId\":2}")
+                .principal(() -> "user"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("FARM"))
+        .andExpect(jsonPath("$.level").value(2))
+        .andExpect(jsonPath("$.upgradeCost").exists());
+  }
+
+  @Test
+  void upgradeBuilding_insufficientResources_returns400() throws Exception {
+    doThrow(new IllegalArgumentException("Insufficient wood: need 200, have 50"))
+        .when(buildingService)
+        .upgradeBuilding(any(UpgradeRequestDTO.class), any());
+
+    mvc.perform(
+            post("/building/upgrade")
+                .contentType(APPLICATION_JSON)
+                .content("{\"villageId\":1,\"constructionSiteId\":2}")
+                .principal(() -> "user"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void upgradeBuilding_noBuilding_returns400() throws Exception {
+    doThrow(new IllegalStateException("No building to upgrade at this site"))
+        .when(buildingService)
+        .upgradeBuilding(any(UpgradeRequestDTO.class), any());
+
+    mvc.perform(
+            post("/building/upgrade")
+                .contentType(APPLICATION_JSON)
+                .content("{\"villageId\":1,\"constructionSiteId\":99}")
+                .principal(() -> "user"))
+        .andExpect(status().isBadRequest());
   }
 }

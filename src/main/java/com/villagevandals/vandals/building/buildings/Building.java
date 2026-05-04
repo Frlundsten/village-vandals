@@ -44,20 +44,20 @@ public abstract class Building {
   public abstract Map<Resource, Integer> getConstructionCost();
 
   public Map<String, Integer> getUpgradeCost() {
-    if (level == DEFAULT_STARTING_LEVEL) {
-      Map<String, Integer> cost = new HashMap<>();
-      cost.put("wood", woodCost);
-      cost.put("bricks", bricksCost);
-      cost.put("food", foodCost);
-      cost.put("iron", ironCost);
-      return cost;
-    }
-
     Map<String, Integer> cost = new HashMap<>();
     cost.put("wood", woodCost * nextLevel());
     cost.put("bricks", bricksCost * nextLevel());
     cost.put("food", foodCost * nextLevel());
     cost.put("iron", ironCost * nextLevel());
+    return cost;
+  }
+
+  public Map<Resource, Integer> getUpgradeCostAsResourceMap() {
+    Map<Resource, Integer> cost = new HashMap<>();
+    cost.put(Resource.WOOD, woodCost * nextLevel());
+    cost.put(Resource.BRICKS, bricksCost * nextLevel());
+    cost.put(Resource.FOOD, foodCost * nextLevel());
+    cost.put(Resource.IRON, ironCost * nextLevel());
     return cost;
   }
 

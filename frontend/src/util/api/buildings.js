@@ -4,10 +4,10 @@ export async function fetchBuildings(villageId) {
   return apiRequest(`/building?villageId=${villageId}`)
 }
 
-export async function upgradeBuilding(villageId, buildingId) {
+export async function upgradeBuilding(villageId, constructionSiteId) {
   return apiRequest(`/building/upgrade`, {
     method: 'POST',
-    body: { villageId, buildingId },
+    body: { villageId, constructionSiteId },
   })
 }
 
