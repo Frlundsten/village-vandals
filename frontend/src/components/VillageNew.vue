@@ -3,7 +3,7 @@
   <BuildingMenu
     :tileInfo="currentTile"
     :villageId="villageId"
-    :currentResources="currentResources"
+    :currentResources="resourceStore"
     v-if="showMenu"
     :style="{ position: 'absolute', left: '40%', top: '15vh' }"
     @building-type="handleBuildingSelection"
@@ -12,7 +12,7 @@
   <BuildingUpgradeCard
     v-if="showUpgradeCard && currentBuilding"
     :building="currentBuilding"
-    :currentResources="currentResources"
+    :currentResources="resourceStore"
     @upgrade="handleUpgrade"
     @close="showUpgradeCard = false"
   />
@@ -27,7 +27,7 @@ import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
 import BuildingUpgradeCard from '@/components/BuildingUpgradeCard.vue'
 import { fetchBuildings, upgradeBuilding } from '@/util/api/buildings.js'
-import { refreshStorage } from '@/util/api/resources.js'
+import { useResourceStore } from '@/stores/resources.js'
 
 const route = useRoute()
 const villageId = Number(route.params.villageId) || Number(localStorage.getItem('villageId'))
@@ -37,11 +37,12 @@ let app
 let container
 let mapDataRef = null
 
+const resourceStore = useResourceStore()
+
 const showMenu = ref(false)
 const showUpgradeCard = ref(false)
 const currentTile = ref({})
 const currentBuilding = ref(null)
-const currentResources = ref(null)
 
 // Reactive map of constructionSiteId -> BuildingDTO for all placed buildings
 const buildingsBySiteId = ref(new Map())
@@ -237,7 +238,7 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
     showMenu.value = !showMenu.value
     currentTile.value = sprite._tileInfo
     try {
-      currentResources.value = await refreshStorage(villageId)
+      await resourceStore.refresh(villageId)
     } catch (e) {
       console.error('Failed to fetch resources', e)
     }
@@ -277,7 +278,7 @@ async function addBuildingSprite(row, col, texturePath, constructionSiteId, yOff
     showUpgradeCard.value = true
     showMenu.value = false
     try {
-      currentResources.value = await refreshStorage(villageId)
+      await resourceStore.refresh(villageId)
     } catch (e) {
       console.error('Failed to fetch resources', e)
     }
@@ -292,7 +293,7 @@ async function handleUpgrade(constructionSiteId) {
     const updated = await fetchBuildings(villageId)
     buildingsBySiteId.value = new Map(updated.map((b) => [b.constructionSiteId, b]))
     currentBuilding.value = buildingsBySiteId.value.get(constructionSiteId) ?? null
-    currentResources.value = await refreshStorage(villageId)
+    await resourceStore.refresh(villageId)
   } catch (e) {
     console.error('Upgrade failed', e)
   } finally {

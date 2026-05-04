@@ -98,6 +98,28 @@ class BuildingControllerTest {
   }
 
   @Test
+  void getAvailableBuildings_farmHasCorrectConstructionCost() throws Exception {
+    when(buildingService.getAvailableBuildings(eq(1L), any())).thenReturn(List.of(new Farm()));
+
+    mvc.perform(get("/building/available").param("villageId", "1").principal(() -> "user"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].constructionCost.wood").value(60))
+        .andExpect(jsonPath("$[0].constructionCost.food").value(40))
+        .andExpect(jsonPath("$[0].upgradeCost").doesNotExist());
+  }
+
+  @Test
+  void getAvailableBuildings_lumberMillHasCorrectConstructionCost() throws Exception {
+    when(buildingService.getAvailableBuildings(eq(1L), any())).thenReturn(List.of(new LumberMill()));
+
+    mvc.perform(get("/building/available").param("villageId", "1").principal(() -> "user"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].constructionCost.food").value(50))
+        .andExpect(jsonPath("$[0].constructionCost.bricks").value(60))
+        .andExpect(jsonPath("$[0].upgradeCost").doesNotExist());
+  }
+
+  @Test
   void getExistingBuildings_returnsBuildingsMappedBySiteId() throws Exception {
     when(buildingService.getAllBuildingsByVillageId(eq(1L), eq("user")))
         .thenReturn(Map.of(1L, new LumberMill(), 2L, new Farm()));

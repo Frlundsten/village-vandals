@@ -13,16 +13,11 @@ const { tileInfo, villageId, currentResources } = defineProps({
 
 const emit = defineEmits(['buildingType', 'closeMenu'])
 
-async function sendInfo(type, upgradeCost, tileInfo) {
+async function sendInfo(type, tileInfo) {
   emit('buildingType', type)
   emit('closeMenu')
   try {
-    const response = await constructBuilding(
-      type,
-      tileInfo.constructionSiteId,
-      villageId,
-      upgradeCost,
-    )
+    await constructBuilding(type, tileInfo.constructionSiteId, villageId)
   } catch (error) {
     console.error('Failed to create building:', error)
   }
@@ -51,9 +46,9 @@ onMounted(async () => {
           <BuildingPresentationCard
             v-for="building in availableBuildings"
             :key="building.type"
-            @click="sendInfo(building.type, building.upgradeCost, tileInfo)"
+            @click="sendInfo(building.type, tileInfo)"
             :type="building.type"
-            :upgradeCost="building.upgradeCost"
+            :constructionCost="building.constructionCost"
             :currentResources="currentResources"
           />
         </div>

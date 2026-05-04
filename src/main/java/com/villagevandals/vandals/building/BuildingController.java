@@ -1,6 +1,7 @@
 package com.villagevandals.vandals.building;
 
 import com.villagevandals.vandals.building.buildings.Building;
+import com.villagevandals.vandals.building.dto.AvailableBuildingDTO;
 import com.villagevandals.vandals.building.dto.BuildingDTO;
 import com.villagevandals.vandals.building.dto.ConstructionRequestDTO;
 import com.villagevandals.vandals.building.dto.UpgradeRequestDTO;
@@ -52,11 +53,11 @@ public class BuildingController {
   }
 
   @GetMapping("/available")
-  public List<Building> getAvailableBuildings(@RequestParam Long villageId, Principal principal) {
+  public List<AvailableBuildingDTO> getAvailableBuildings(@RequestParam Long villageId, Principal principal) {
     try {
-      List<Building> result = buildingService.getAvailableBuildings(villageId, principal.getName());
-      LOG.info("Available buildings: {}", result);
-      return result;
+      return buildingService.getAvailableBuildings(villageId, principal.getName()).stream()
+          .map(AvailableBuildingDTO::fromEntity)
+          .toList();
     } catch (Exception e) {
       return List.of();
     }

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  upgradeCost: Object,
+  constructionCost: Object,
   type: String,
   currentResources: Object,
 })
@@ -22,8 +22,8 @@ const labels = {
 }
 
 const canAfford = computed(() => {
-  if (!props.currentResources || !props.upgradeCost) return true
-  return Object.entries(props.upgradeCost).every(
+  if (!props.currentResources || !props.constructionCost) return true
+  return Object.entries(props.constructionCost).every(
     ([resource, cost]) => (props.currentResources[resource] ?? 0) >= cost,
   )
 })
@@ -46,7 +46,7 @@ const canAfford = computed(() => {
 
     <div class="grid grid-cols-2 gap-1.5 w-full mt-1">
       <div
-        v-for="(value, key) in upgradeCost"
+        v-for="(value, key) in constructionCost"
         :key="key"
         class="flex flex-col items-center justify-center border rounded-lg p-1.5 bg-base-100 text-xs"
         :class="

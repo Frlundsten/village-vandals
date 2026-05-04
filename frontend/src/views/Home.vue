@@ -5,8 +5,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import Avatar from '@/components/Avatar.vue'
 
 import { useSessionStore } from '@/stores/pinia.js'
+import { useResourceStore } from '@/stores/resources.js'
 import { storeToRefs } from 'pinia'
-import { refreshStorage } from '@/util/api/resources.js'
 import { apiRequest } from '@/util/api/api.js'
 
 const session = useSessionStore()
@@ -41,12 +41,8 @@ const player = ref({
 
 const currentVillage = ref({ id: 0, name: '' })
 
-const resources = ref({
-  food: 0,
-  wood: 0,
-  bricks: 0,
-  iron: 0,
-})
+const resourceStore = useResourceStore()
+const { food, wood, bricks, iron } = storeToRefs(resourceStore)
 
 const { isAuthenticated } = storeToRefs(session)
 
@@ -75,7 +71,7 @@ async function loadUserData() {
     currentVillage.value.id = village.id
     localStorage.setItem('villageId', village.id)
 
-    resources.value = await refreshStorage(village.id)
+    await resourceStore.refresh(village.id)
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     clearUserData()
@@ -85,7 +81,6 @@ async function loadUserData() {
 function clearUserData() {
   player.value = { name: '' }
   currentVillage.value = { id: 0, name: '' }
-  resources.value = { food: 0, wood: 0, bricks: 0, iron: 0 }
 }
 
 function goTo(section) {
@@ -97,7 +92,7 @@ const safeVillageId = computed(() => {
 })
 
 async function updateResourceUI() {
-  resources.value = await refreshStorage(safeVillageId.value)
+  await resourceStore.refresh(safeVillageId.value)
 }
 </script>
 
@@ -123,7 +118,7 @@ async function updateResourceUI() {
           <div
             class="badge badge-accent flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-yellow-300 to-yellow-400 text-black"
           >
-            <span class="text-2xl">🌾</span> {{ resources.food }}
+            <span class="text-2xl">🌾</span> {{ food }}
           </div>
         </div>
 
@@ -131,7 +126,7 @@ async function updateResourceUI() {
           <div
             class="badge badge-success flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-green-400 to-green-500 text-white"
           >
-            <span class="text-2xl">🌲</span> {{ resources.wood }}
+            <span class="text-2xl">🌲</span> {{ wood }}
           </div>
         </div>
 
@@ -139,7 +134,7 @@ async function updateResourceUI() {
           <div
             class="badge badge-warning flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-amber-400 to-amber-500 text-black"
           >
-            <span class="text-2xl">🧱</span> {{ resources.bricks }}
+            <span class="text-2xl">🧱</span> {{ bricks }}
           </div>
         </div>
 
@@ -147,7 +142,7 @@ async function updateResourceUI() {
           <div
             class="badge badge-info flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-sky-400 to-sky-500 text-white"
           >
-            <span class="text-2xl">⚒️</span> {{ resources.iron }}
+            <span class="text-2xl">⚒️</span> {{ iron }}
           </div>
         </div>
       </div>
