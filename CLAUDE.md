@@ -56,9 +56,11 @@ Before any code, produce a spec document covering:
 - **Out of scope** — explicitly state what this change does NOT cover
 
 Present the spec to the user. Do NOT proceed until the user explicitly approves it.
+When the spec is approved, put it in the plan directory and name it after the requested improvement or fix.
 
 #### Step 2 — Break the Spec into Tasks
 Decompose the approved spec into fine-grained tasks using `TaskCreate`. Each task must map to a single verifiable unit of work (one class, method, migration, or UI component). Present the task list for review before starting.
+When user approves the tasks, put them into a folder named after the spec.
 
 #### Step 3 — Implement with TDD
 Execute tasks one at a time:

@@ -10,6 +10,6 @@ public class GameDefaults {
 
     // Production
     public static final int DEFAULT_PRODUCTION_PER_HOUR = 3600;
-    public static final int DEFAULT_ECONOMICAL_PRODUCTION_RATE = 450;
+    public static final int DEFAULT_ECONOMICAL_PRODUCTION_RATE = 18000;
 
 }
