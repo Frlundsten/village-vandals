@@ -1,5 +1,6 @@
 package com.villagevandals.vandals.resource;
 
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMICAL_PRODUCTION_RATE;
 import static com.villagevandals.vandals.resource.Resource.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -133,6 +134,30 @@ class ResourcesServiceTest {
     service.deductResources(1L, Map.of(WOOD, 100));
 
     assertThat(village.getStorage().get(WOOD)).isEqualTo(0);
+  }
+
+  @Test
+  void getCurrentResourceStorage_starterVillageDefaultRates_producesAllResourcesOverTime() {
+    Village village = villageWithAllRates(DEFAULT_ECONOMICAL_PRODUCTION_RATE, twoHoursAgo());
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    ResourceStorage result = service.getCurrentResourceStorage(1L);
+
+    assertThat(result.get(WOOD)).isGreaterThan(100);
+    assertThat(result.get(FOOD)).isGreaterThan(100);
+    assertThat(result.get(BRICKS)).isGreaterThan(100);
+    assertThat(result.get(IRON)).isGreaterThan(100);
+  }
+
+  private Village villageWithAllRates(int rate, Instant lastUpdate) {
+    ResourceStorage storage = new ResourceStorage();
+    storage.setLastUpdate(lastUpdate);
+    ResourceProduction production = new ResourceProduction();
+    production.setWoodPerHour(rate);
+    production.setFoodPerHour(rate);
+    production.setBricksPerHour(rate);
+    production.setIronPerHour(rate);
+    return new Village(0, 0, mockUser, storage, production);
   }
 
   private Village villageWithProductionRate(int rate, Instant lastUpdate) {

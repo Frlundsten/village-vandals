@@ -56,11 +56,21 @@ Before any code, produce a spec document covering:
 - **Out of scope** — explicitly state what this change does NOT cover
 
 Present the spec to the user. Do NOT proceed until the user explicitly approves it.
-When the spec is approved, put it in the plan directory and name it after the requested improvement or fix.
+When the spec is approved, save it as `plan/<spec-name>.md` (a single file directly inside the `plan/` root — never a subfolder).
 
 #### Step 2 — Break the Spec into Tasks
 Decompose the approved spec into fine-grained tasks using `TaskCreate`. Each task must map to a single verifiable unit of work (one class, method, migration, or UI component). Present the task list for review before starting.
-When user approves the tasks, put them into a folder named after the spec.
+Save each task as its own MD file inside `tasks/<spec-name>/task-N-<short-name>.md`.
+Example structure:
+```
+plan/
+  fix-starter-village-resource-production.md   ← spec file
+tasks/
+  fix-starter-village-resource-production/
+    task-1-add-default-rate-constructor.md
+    task-2-use-default-constructor-in-village.md
+    task-3-write-tests.md
+```
 
 #### Step 3 — Implement with TDD
 Execute tasks one at a time:

@@ -37,7 +37,7 @@ public class Village {
     this.xCoordinate = tile.getCol();
     this.yCoordinate = tile.getRow();
     this.storage = new ResourceStorage();
-    this.production = new ResourceProduction();
+    this.production = ResourceProduction.withDefaults();
     this.owner = requireNonNull(owner, "Must have valid owner");
   }
 
@@ -52,7 +52,7 @@ public class Village {
     this.xCoordinate = xCoordinate;
     this.yCoordinate = yCoordinate;
     this.storage = new ResourceStorage();
-    this.production = new ResourceProduction();
+    this.production = ResourceProduction.withDefaults();
     this.owner = requireNonNull(owner, "Must have valid owner");
   }
 
