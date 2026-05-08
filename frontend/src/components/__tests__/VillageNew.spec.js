@@ -3,15 +3,17 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import VillageNew from '../VillageNew.vue'
 import * as buildingsApi from '@/util/api/buildings.js'
-import { Assets } from 'pixi.js'
+import { Application, Assets, Graphics } from 'pixi.js'
 
 vi.mock('pixi.js', () => ({
   Application: vi.fn(function () {
+    const canvas = document.createElement('canvas')
     return {
       init: vi.fn().mockResolvedValue(undefined),
-      stage: { addChild: vi.fn() },
-      canvas: document.createElement('canvas'),
+      stage: { addChild: vi.fn(), on: vi.fn() },
+      canvas,
       renderer: { width: 800, height: 600 },
+      screen: { x: 0, y: 0, width: 800, height: 600 },
       destroy: vi.fn(),
     }
   }),
@@ -71,6 +73,73 @@ vi.mock('@/util/api/buildings.js', () => ({
 vi.mock('@/util/api/resources.js', () => ({
   refreshStorage: vi.fn().mockResolvedValue({ food: 0, wood: 0, bricks: 0, iron: 0 }),
 }))
+
+describe('VillageNew — drag vs click', () => {
+  it('a small pointer movement after clicking a tile does not activate dragging', async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+
+    // Intercept canvas.addEventListener to capture the native pointerdown handler
+    let canvasPointerdownFn = null
+    const testCanvas = document.createElement('canvas')
+    const origAdd = testCanvas.addEventListener.bind(testCanvas)
+    vi.spyOn(testCanvas, 'addEventListener').mockImplementation((evt, fn, ...opts) => {
+      if (evt === 'pointerdown') canvasPointerdownFn = fn
+      origAdd(evt, fn, ...opts)
+    })
+
+    Application.mockImplementationOnce(function () {
+      return {
+        init: vi.fn().mockResolvedValue(undefined),
+        stage: { addChild: vi.fn(), on: vi.fn(), eventMode: 'passive', hitArea: null },
+        canvas: testCanvas,
+        renderer: { width: 800, height: 600 },
+        screen: { x: 0, y: 0, width: 800, height: 600 },
+        destroy: vi.fn(),
+      }
+    })
+
+    const wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+
+    // Simulate: user presses canvas at (300, 200) — native event sets dragStart
+    canvasPointerdownFn?.({ offsetX: 300, offsetY: 200 })
+
+    // Get the dragLayer's globalpointermove handler
+    const graphicsInstance = Graphics.mock.results[0].value
+    const moveHandler = graphicsInstance.on.mock.calls
+      .find((c) => c[0] === 'globalpointermove')?.[1]
+
+    // Simulate: pointer moves only 2 px — under the 5 px threshold
+    moveHandler?.({ global: { x: 302, y: 200 }, buttons: 1 })
+
+    // dragging must stay false — a 2 px movement is a click, not a drag
+    expect(wrapper.vm.dragging).toBe(false)
+
+    wrapper.unmount()
+  })
+})
+
+describe('VillageNew — loading overlay', () => {
+  it('starts as loading and clears after assets are ready', async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+
+    const wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+
+    expect(wrapper.vm.loading).toBe(true)
+
+    await flushPromises()
+
+    expect(wrapper.vm.loading).toBe(false)
+  })
+})
 
 describe('VillageNew — handleBuildingSelection', () => {
   let wrapper
