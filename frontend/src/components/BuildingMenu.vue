@@ -25,6 +25,8 @@ onMounted(async () => {
     console.error('Error fetching buildings:', e)
   }
 })
+
+defineExpose({ sendInfo })
 </script>
 <template>
   <!-- Overlay for fullscreen modal style -->

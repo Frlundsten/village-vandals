@@ -36,6 +36,22 @@ Frontend reads `VITE_API_BASE_URL` from `frontend/.env` (default: `http://localh
 
 ## Development Process
 
+## Required workflow
+
+For EVERY code change:
+
+1. Add or update automated tests that fail before the change.
+2. Implement the fix or feature.
+3. Run the relevant test suite.
+4. Ensure tests pass before completing.
+
+A task is NOT complete unless:
+- behavior is covered by tests
+- failing reproduction exists for bug fixes
+- new functionality has automated test coverage
+
+Never skip tests because a change seems "small".
+
 ### Test-Driven Development
 Always write tests when implementing or changing functionality. Follow this order:
 1. Write a failing test that captures the requirement

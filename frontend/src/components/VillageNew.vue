@@ -319,4 +319,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeTilemap)
   if (app) app.destroy(true, { children: true })
 })
+
+defineExpose({ handleBuildingSelection, buildingsBySiteId, currentTile })
 </script>
