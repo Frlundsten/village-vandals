@@ -26,7 +26,7 @@ import mapUrl from '@/assets/maps/vv.json?url'
 import mapTilesUrl from '@/assets/maps/map_tiles.json?url'
 import BuildingMenu from '@/components/BuildingMenu.vue'
 import BuildingUpgradeCard from '@/components/BuildingUpgradeCard.vue'
-import { fetchBuildings, upgradeBuilding } from '@/util/api/buildings.js'
+import { constructBuilding, fetchBuildings, upgradeBuilding } from '@/util/api/buildings.js'
 import { useResourceStore } from '@/stores/resources.js'
 
 const route = useRoute()
@@ -245,8 +245,16 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
   })
 }
 
-function handleBuildingSelection(type) {
+async function handleBuildingSelection(type) {
   const { row, col, constructionSiteId } = currentTile.value
+  try {
+    await constructBuilding(type, constructionSiteId, villageId)
+    const updated = await fetchBuildings(villageId)
+    updated.forEach((b) => buildingsBySiteId.value.set(b.constructionSiteId, b))
+  } catch (e) {
+    console.error('Failed to construct building:', e)
+    return
+  }
   addBuildingSprite(row, col, `/assets/Tiles/${type}.png`, constructionSiteId)
 }
 

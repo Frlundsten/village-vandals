@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import BuildingPresentationCard from '@/components/BuildingPresentationCard.vue'
-import { constructBuilding, getAvailableBuildings } from '@/util/api/buildings.js'
+import { getAvailableBuildings } from '@/util/api/buildings.js'
 
 const availableBuildings = ref([])
 
@@ -13,14 +13,9 @@ const { tileInfo, villageId, currentResources } = defineProps({
 
 const emit = defineEmits(['buildingType', 'closeMenu'])
 
-async function sendInfo(type, tileInfo) {
+function sendInfo(type, tileInfo) {
   emit('buildingType', type)
   emit('closeMenu')
-  try {
-    await constructBuilding(type, tileInfo.constructionSiteId, villageId)
-  } catch (error) {
-    console.error('Failed to create building:', error)
-  }
 }
 
 onMounted(async () => {

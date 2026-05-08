@@ -34,3 +34,8 @@ build/
 
 ### Secrets ###
 .env
+
+.claude/
+/.agents
+
+skills-lock.json
