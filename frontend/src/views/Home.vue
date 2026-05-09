@@ -13,7 +13,7 @@ const session = useSessionStore()
 const router = useRouter()
 
 async function handleLogout() {
-  const keycloakIdToken = session.keycloakIdToken
+  const keycloakIdToken = localStorage.getItem('keycloak_id_token')
 
   try {
     await apiRequest('/auth/logout', { method: 'POST' })
