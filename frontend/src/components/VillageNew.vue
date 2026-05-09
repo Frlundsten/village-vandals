@@ -97,6 +97,7 @@ onMounted(async () => {
     pixiContainer.value.appendChild(app.canvas)
 
     container = new Container()
+    container.sortableChildren = true
     app.stage.addChild(container)
 
     // Use native canvas events so PixiJS hit-testing is not bypassed by a
@@ -196,6 +197,7 @@ onMounted(async () => {
 
     dragLayer.eventMode = 'static'
     dragLayer.cursor = 'grab'
+    dragLayer.zIndex = -1
 
     container.addChildAt(dragLayer, 0)
 
@@ -311,8 +313,9 @@ async function addBuildingSprite(row, col, texturePath, constructionSiteId, yOff
   building.anchor.set(0.5, 1) // bottom-center
   building.x = (col - row) * (tilewidth / 2)
   building.y = (col + row) * (tileheight / 2) + yOffset
+  building.zIndex = row + col + 0.5
 
-  container.addChild(building) // Adds texture "on top"
+  container.addChild(building)
   building.interactive = true
   building.on('pointerup', async () => {
     const buildingData = buildingsBySiteId.value.get(constructionSiteId)
@@ -348,6 +351,7 @@ function setupSprite(sprite, col, row, tileWidth, tileHeight) {
   sprite.anchor.set(0.5, 1)
   sprite.x = (col - row) * (tileWidth / 2)
   sprite.y = (col + row) * (tileHeight / 2)
+  sprite.zIndex = row + col
 }
 
 onBeforeUnmount(() => {

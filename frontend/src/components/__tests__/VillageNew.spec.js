@@ -42,8 +42,12 @@ vi.mock('pixi.js', () => ({
       beginFill: vi.fn().mockReturnThis(),
       drawRect: vi.fn().mockReturnThis(),
       endFill: vi.fn().mockReturnThis(),
+      rect: vi.fn().mockReturnThis(),
+      fill: vi.fn().mockReturnThis(),
       interactive: false,
+      eventMode: '',
       cursor: '',
+      zIndex: 0,
       on: vi.fn(),
     }
   }),
@@ -141,6 +145,39 @@ describe('VillageNew — loading overlay', () => {
   })
 })
 
+describe('VillageNew — setupSprite zIndex', () => {
+  it('assigns zIndex equal to row + col for each base tile', async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+
+    const { Assets, Sprite } = await import('pixi.js')
+    Sprite.mockClear()
+
+    // Provide a minimal 2x1 map so setupSprite is called for two tiles
+    // tile at i=0: row=0,col=0 → zIndex=0; tile at i=1: row=0,col=1 → zIndex=1
+    Assets.load
+      .mockResolvedValueOnce({
+        layers: [{ type: 'tilelayer', width: 2, data: [1, 1] }],
+        tilewidth: 32,
+        tileheight: 32,
+      })
+      .mockResolvedValueOnce({ tileset: { tile: [{ _id: 0, image: { _source: 'test.png' } }] } })
+      .mockResolvedValue({}) // texture for each tile
+
+    const wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+
+    const sprites = Sprite.mock.results.map((r) => r.value)
+    expect(sprites[0].zIndex).toBe(0) // row=0, col=0
+    expect(sprites[1].zIndex).toBe(1) // row=0, col=1
+
+    wrapper.unmount()
+  })
+})
+
 describe('VillageNew — handleBuildingSelection', () => {
   let wrapper
 
@@ -187,5 +224,31 @@ describe('VillageNew — handleBuildingSelection', () => {
     await flushPromises()
 
     expect(Assets.load).not.toHaveBeenCalledWith('/assets/Tiles/Farm.png')
+  })
+
+  it('loads /assets/Tiles/BRICKYARD.png when BRICKYARD is selected', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'BRICKYARD' }])
+
+    await wrapper.vm.handleBuildingSelection('BRICKYARD')
+    await flushPromises()
+
+    expect(Assets.load).toHaveBeenCalledWith('/assets/Tiles/BRICKYARD.png')
+  })
+
+  it('building sprite zIndex is greater than base tile zIndex at the same row+col', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'FARM' }])
+
+    const { Sprite } = await import('pixi.js')
+    Sprite.mockClear()
+
+    await wrapper.vm.handleBuildingSelection('FARM')
+    await flushPromises()
+
+    // The building sprite is the last Sprite created by addBuildingSprite
+    const sprites = Sprite.mock.results.map((r) => r.value)
+    const buildingSprite = sprites[sprites.length - 1]
+
+    // currentTile is row=1, col=1 → base tile zIndex = 2, building zIndex must be > 2
+    expect(buildingSprite.zIndex).toBeGreaterThan(wrapper.vm.currentTile.row + wrapper.vm.currentTile.col)
   })
 })
