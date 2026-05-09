@@ -145,6 +145,40 @@ describe('VillageNew — loading overlay', () => {
   })
 })
 
+describe('VillageNew — drag guard when press originates outside canvas', () => {
+  it('does not pan the map when globalpointermove fires without a prior canvas pointerdown', async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+
+    const { Container } = await import('pixi.js')
+
+    const wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+
+    const containerInstance = Container.mock.results[0].value
+    const initialX = containerInstance.x
+    const initialY = containerInstance.y
+
+    // Get globalpointermove handler — WITHOUT triggering canvas pointerdown first
+    const graphicsInstance = Graphics.mock.results[0].value
+    const moveHandler = graphicsInstance.on.mock.calls
+      .find((c) => c[0] === 'globalpointermove')?.[1]
+
+    // Simulate a large move with button held (as if pressed on an overlay)
+    moveHandler?.({ global: { x: 400, y: 300 }, buttons: 1 })
+
+    // Container must not have moved
+    expect(containerInstance.x).toBe(initialX)
+    expect(containerInstance.y).toBe(initialY)
+    expect(wrapper.vm.dragging).toBe(false)
+
+    wrapper.unmount()
+  })
+})
+
 describe('VillageNew — setupSprite zIndex', () => {
   it('assigns zIndex equal to row + col for each base tile', async () => {
     setActivePinia(createPinia())

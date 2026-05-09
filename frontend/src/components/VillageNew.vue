@@ -60,6 +60,7 @@ const buildingsBySiteId = ref(new Map())
 const dragging = ref(false)
 let dragStart = { x: 0, y: 0 }
 let containerStart = { x: 0, y: 0 }
+let dragInitiatedOnCanvas = false
 const DRAG_THRESHOLD = 5
 let canvasCleanup = null
 
@@ -104,11 +105,13 @@ onMounted(async () => {
     // stage hitArea that would otherwise make the stage catch all pointer events
     // before tile sprites are checked.
     const pointerDownFn = (event) => {
+      dragInitiatedOnCanvas = true
       dragStart = { x: event.offsetX, y: event.offsetY }
       containerStart = { x: container.x, y: container.y }
       dragging.value = false
     }
     const pointerUpFn = () => {
+      dragInitiatedOnCanvas = false
       dragging.value = false
     }
     const wheelFn = (event) => {
@@ -202,6 +205,7 @@ onMounted(async () => {
     container.addChildAt(dragLayer, 0)
 
     dragLayer.on('globalpointermove', (event) => {
+      if (!dragInitiatedOnCanvas) return
       if (event.buttons === 0) {
         dragging.value = false
         return
