@@ -179,16 +179,15 @@ describe('VillageNew — drag guard when press originates outside canvas', () =>
   })
 })
 
-describe('VillageNew — setupSprite zIndex', () => {
-  it('assigns zIndex equal to row + col for each base tile', async () => {
+describe('VillageNew — terrain tile zIndex', () => {
+  it('does not set an explicit zIndex on plain terrain tiles', async () => {
     setActivePinia(createPinia())
     buildingsApi.fetchBuildings.mockResolvedValue([])
 
     const { Assets, Sprite } = await import('pixi.js')
     Sprite.mockClear()
 
-    // Provide a minimal 2x1 map so setupSprite is called for two tiles
-    // tile at i=0: row=0,col=0 → zIndex=0; tile at i=1: row=0,col=1 → zIndex=1
+    // Two plain terrain tiles (gid=1, not a construction site)
     Assets.load
       .mockResolvedValueOnce({
         layers: [{ type: 'tilelayer', width: 2, data: [1, 1] }],
@@ -196,7 +195,7 @@ describe('VillageNew — setupSprite zIndex', () => {
         tileheight: 32,
       })
       .mockResolvedValueOnce({ tileset: { tile: [{ _id: 0, image: { _source: 'test.png' } }] } })
-      .mockResolvedValue({}) // texture for each tile
+      .mockResolvedValue({})
 
     const wrapper = mount(VillageNew, {
       attachTo: document.body,
@@ -205,8 +204,51 @@ describe('VillageNew — setupSprite zIndex', () => {
     await flushPromises()
 
     const sprites = Sprite.mock.results.map((r) => r.value)
-    expect(sprites[0].zIndex).toBe(0) // row=0, col=0
-    expect(sprites[1].zIndex).toBe(1) // row=0, col=1
+    // Plain terrain tiles must NOT have an explicit zIndex — PixiJS insertion order handles them
+    expect(sprites[0].zIndex).toBeUndefined()
+    expect(sprites[1].zIndex).toBeUndefined()
+
+    wrapper.unmount()
+  })
+})
+
+describe('VillageNew — construction site tile zIndex', () => {
+  it('assigns zIndex = row + col to construction site tiles only', async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+
+    const { Assets, Sprite } = await import('pixi.js')
+    Sprite.mockClear()
+
+    // Map: plain tile at col=0, construction site (gid=59, gid-1=58) at col=1 (row=0)
+    Assets.load
+      .mockResolvedValueOnce({
+        layers: [{ type: 'tilelayer', width: 2, data: [1, 59] }],
+        tilewidth: 32,
+        tileheight: 32,
+      })
+      .mockResolvedValueOnce({
+        tileset: {
+          tile: [
+            { _id: 0, image: { _source: 'terrain.png' } },
+            { _id: 58, image: { _source: 'site.png' } },
+          ],
+        },
+      })
+      .mockResolvedValue({})
+
+    const wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+
+    const sprites = Sprite.mock.results.map((r) => r.value)
+    const plainSprite = sprites[0]         // row=0, col=0
+    const siteSprite  = sprites[1]         // row=0, col=1
+
+    expect(plainSprite.zIndex).toBeUndefined()   // terrain — no explicit zIndex
+    expect(siteSprite.zIndex).toBeUndefined()    // construction site tile — no explicit zIndex
 
     wrapper.unmount()
   })

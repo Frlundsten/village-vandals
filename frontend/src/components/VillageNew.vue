@@ -355,7 +355,6 @@ function setupSprite(sprite, col, row, tileWidth, tileHeight) {
   sprite.anchor.set(0.5, 1)
   sprite.x = (col - row) * (tileWidth / 2)
   sprite.y = (col + row) * (tileHeight / 2)
-  sprite.zIndex = row + col
 }
 
 onBeforeUnmount(() => {
