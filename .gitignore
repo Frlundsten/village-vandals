@@ -41,3 +41,7 @@ build/
 skills-lock.json
 
 /frontend/.playwright-cli
+
+### Spec & task files ###
+/plan/
+/tasks/
