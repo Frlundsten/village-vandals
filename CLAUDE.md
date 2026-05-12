@@ -138,3 +138,16 @@ Public endpoints (no JWT required): `POST /user/register`, `POST /auth/login`, `
 - **Single-table inheritance for buildings**: Simplifies queries but means all building columns live in one table.
 - **Async resource production**: Villages track production rates in the DB; resource amounts are calculated from elapsed time (checked on fetch, not via a background job per village).
 - **CORS**: Allowed origins are `localhost:80` and `localhost:5173` — will need updating for production.
+
+
+### Code Intelligence
+
+Prefer LSP over Grep/Read for code navigation — it's faster, precise, and avoids reading entire files:
+- `workspaceSymbol` to find where something is defined
+- `findReferences` to see all usages across the codebase
+- `goToDefinition` / `goToImplementation` to jump to source
+- `hover` for type info without reading the file
+
+Use Grep only when LSP isn't available or for text/pattern searches (comments, strings, config).
+
+After writing or editing code, check LSP diagnostics and fix errors before proceeding.
