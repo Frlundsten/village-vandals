@@ -42,7 +42,8 @@ const player = ref({
 const currentVillage = ref({ id: 0, name: '' })
 
 const resourceStore = useResourceStore()
-const { food, wood, bricks, iron } = storeToRefs(resourceStore)
+const { food, wood, bricks, iron, foodPerHour, woodPerHour, bricksPerHour, ironPerHour } =
+  storeToRefs(resourceStore)
 
 const { isAuthenticated } = storeToRefs(session)
 
@@ -116,33 +117,45 @@ async function updateResourceUI() {
       <div class="flex flex-wrap gap-6 items-center mx-auto mt-5 sm:mt-0">
         <div class="tooltip tooltip-bottom" data-tip="Food">
           <div
-            class="badge badge-accent flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-yellow-300 to-yellow-400 text-black"
+            class="flex flex-col items-center px-4 py-2 rounded-xl shadow-md bg-gradient-to-tr from-yellow-300 to-yellow-400 text-black"
           >
-            <span class="text-2xl">🌾</span> {{ food }}
+            <div class="flex items-center gap-2 font-semibold text-lg">
+              <span class="text-2xl">🌾</span> {{ food }}
+            </div>
+            <span class="text-xs font-medium opacity-75">+{{ foodPerHour }}/hr</span>
           </div>
         </div>
 
         <div class="tooltip tooltip-bottom" data-tip="Wood">
           <div
-            class="badge badge-success flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-green-400 to-green-500 text-white"
+            class="flex flex-col items-center px-4 py-2 rounded-xl shadow-md bg-gradient-to-tr from-green-400 to-green-500 text-white"
           >
-            <span class="text-2xl">🌲</span> {{ wood }}
+            <div class="flex items-center gap-2 font-semibold text-lg">
+              <span class="text-2xl">🌲</span> {{ wood }}
+            </div>
+            <span class="text-xs font-medium opacity-75">+{{ woodPerHour }}/hr</span>
           </div>
         </div>
 
         <div class="tooltip tooltip-bottom" data-tip="Brick">
           <div
-            class="badge badge-warning flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-amber-400 to-amber-500 text-black"
+            class="flex flex-col items-center px-4 py-2 rounded-xl shadow-md bg-gradient-to-tr from-amber-400 to-amber-500 text-black"
           >
-            <span class="text-2xl">🧱</span> {{ bricks }}
+            <div class="flex items-center gap-2 font-semibold text-lg">
+              <span class="text-2xl">🧱</span> {{ bricks }}
+            </div>
+            <span class="text-xs font-medium opacity-75">+{{ bricksPerHour }}/hr</span>
           </div>
         </div>
 
         <div class="tooltip tooltip-bottom" data-tip="Iron">
           <div
-            class="badge badge-info flex items-center gap-2 px-4 py-3 rounded-xl shadow-md font-semibold text-lg bg-gradient-to-tr from-sky-400 to-sky-500 text-white"
+            class="flex flex-col items-center px-4 py-2 rounded-xl shadow-md bg-gradient-to-tr from-sky-400 to-sky-500 text-white"
           >
-            <span class="text-2xl">⚒️</span> {{ iron }}
+            <div class="flex items-center gap-2 font-semibold text-lg">
+              <span class="text-2xl">⚒️</span> {{ iron }}
+            </div>
+            <span class="text-xs font-medium opacity-75">+{{ ironPerHour }}/hr</span>
           </div>
         </div>
       </div>

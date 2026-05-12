@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import VillageNew from '../VillageNew.vue'
@@ -30,11 +30,16 @@ vi.mock('pixi.js', () => ({
       addChild: vi.fn(),
       addChildAt: vi.fn(),
       getLocalBounds: vi.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
-      scale: { set: vi.fn() },
-      pivot: { set: vi.fn() },
+      getGlobalPosition: vi.fn().mockReturnValue({ x: 100, y: 200 }),
+      scale: { set: vi.fn(), x: 1, y: 1 },
+      pivot: { set: vi.fn(), x: 0, y: 0 },
       position: { set: vi.fn() },
       x: 0,
       y: 0,
+      zIndex: 0,
+      interactive: false,
+      sortableChildren: false,
+      on: vi.fn(),
     }
   }),
   Graphics: vi.fn(function () {
@@ -44,6 +49,8 @@ vi.mock('pixi.js', () => ({
       endFill: vi.fn().mockReturnThis(),
       rect: vi.fn().mockReturnThis(),
       fill: vi.fn().mockReturnThis(),
+      circle: vi.fn().mockReturnThis(),
+      stroke: vi.fn().mockReturnThis(),
       interactive: false,
       eventMode: '',
       cursor: '',
@@ -274,7 +281,7 @@ describe('VillageNew — handleBuildingSelection', () => {
   })
 
   it('populates buildingsBySiteId with the new building after successful construction', async () => {
-    const newBuilding = { constructionSiteId: 2, type: 'Farm' }
+    const newBuilding = { constructionSiteId: 2, type: 'Farm', level: 1 }
     buildingsApi.fetchBuildings.mockResolvedValue([newBuilding])
 
     await wrapper.vm.handleBuildingSelection('Farm')
@@ -284,7 +291,7 @@ describe('VillageNew — handleBuildingSelection', () => {
   })
 
   it('calls addBuildingSprite after successful construction', async () => {
-    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'Farm' }])
+    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'Farm', level: 1 }])
 
     await wrapper.vm.handleBuildingSelection('Farm')
     await flushPromises()
@@ -303,7 +310,7 @@ describe('VillageNew — handleBuildingSelection', () => {
   })
 
   it('loads /assets/Tiles/BRICKYARD.png when BRICKYARD is selected', async () => {
-    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'BRICKYARD' }])
+    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'BRICKYARD', level: 1 }])
 
     await wrapper.vm.handleBuildingSelection('BRICKYARD')
     await flushPromises()
@@ -311,20 +318,104 @@ describe('VillageNew — handleBuildingSelection', () => {
     expect(Assets.load).toHaveBeenCalledWith('/assets/Tiles/BRICKYARD.png')
   })
 
-  it('building sprite zIndex is greater than base tile zIndex at the same row+col', async () => {
-    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'FARM' }])
+  it('building container zIndex is greater than base tile zIndex at the same row+col', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'FARM', level: 1 }])
 
-    const { Sprite } = await import('pixi.js')
-    Sprite.mockClear()
+    const { Container } = await import('pixi.js')
 
     await wrapper.vm.handleBuildingSelection('FARM')
     await flushPromises()
 
-    // The building sprite is the last Sprite created by addBuildingSprite
-    const sprites = Sprite.mock.results.map((r) => r.value)
-    const buildingSprite = sprites[sprites.length - 1]
+    // Container[0] = main map container, Container[1] = building wrapper container
+    const buildingContainer = Container.mock.results[1].value
 
-    // currentTile is row=1, col=1 → base tile zIndex = 2, building zIndex must be > 2
-    expect(buildingSprite.zIndex).toBeGreaterThan(wrapper.vm.currentTile.row + wrapper.vm.currentTile.col)
+    // currentTile is row=1, col=1 → base tile zIndex = 2, building container zIndex must be > 2
+    expect(buildingContainer.zIndex).toBeGreaterThan(wrapper.vm.currentTile.row + wrapper.vm.currentTile.col)
+  })
+})
+
+describe('VillageNew — building level badge (HTML overlay)', () => {
+  let wrapper
+
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    buildingsApi.constructBuilding.mockResolvedValue({})
+
+    wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+
+    wrapper.vm.currentTile = { row: 0, col: 0, constructionSiteId: 3 }
+  })
+
+  afterEach(() => {
+    wrapper.unmount()
+  })
+
+  it('adds a badge entry with the building level when a building is placed', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 3, type: 'Farm', level: 2 },
+    ])
+
+    await wrapper.vm.handleBuildingSelection('Farm')
+    await flushPromises()
+
+    const badge = wrapper.vm.buildingBadges.find((b) => b.constructionSiteId === 3)
+    expect(badge).toBeDefined()
+    expect(badge.level).toBe(2)
+  })
+
+  it('badge position is derived from the building container screen coordinates', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 3, type: 'Farm', level: 1 },
+    ])
+
+    await wrapper.vm.handleBuildingSelection('Farm')
+    await flushPromises()
+
+    const badge = wrapper.vm.buildingBadges.find((b) => b.constructionSiteId === 3)
+    // The mock Container.getGlobalPosition returns { x: 100, y: 200 }
+    expect(badge.x).toBe(100)
+    expect(typeof badge.y).toBe('number')
+  })
+})
+
+describe('VillageNew — badge update on upgrade', () => {
+  it('updates the badge level after handleUpgrade', async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    buildingsApi.constructBuilding.mockResolvedValue({})
+    buildingsApi.upgradeBuilding = vi.fn().mockResolvedValue({})
+
+    const wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+
+    wrapper.vm.currentTile = { row: 0, col: 0, constructionSiteId: 5 }
+
+    // Place a level-1 building
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 5, type: 'Farm', level: 1 },
+    ])
+    await wrapper.vm.handleBuildingSelection('Farm')
+    await flushPromises()
+
+    expect(wrapper.vm.buildingBadges.find((b) => b.constructionSiteId === 5).level).toBe(1)
+
+    // Upgrade: backend now returns level 2
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 5, type: 'Farm', level: 2 },
+    ])
+    await wrapper.vm.handleUpgrade(5)
+    await flushPromises()
+
+    expect(wrapper.vm.buildingBadges.find((b) => b.constructionSiteId === 5).level).toBe(2)
+
+    wrapper.unmount()
   })
 })
