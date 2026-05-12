@@ -85,10 +85,27 @@ class ResourcesServiceTest {
   }
 
   @Test
-  void updateProduction_wood_increasesWoodProductionInDb() {
+  void updateProductionDelta_wood_incrementsEntityWoodPerHour() {
+    Village village = villageWithProductionRate(0, Instant.now());
+    village.getProduction().setWoodPerHour(100);
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    service.updateProductionDelta(new LumberMill(), 1L, 50);
+
+    assertThat(village.getProduction().getWoodPerHour()).isEqualTo(150);
+    verify(repository).save(village);
+  }
+
+  @Test
+  void updateProduction_wood_addsFullProductionRateToEntity() {
     LumberMill mill = new LumberMill();
+    Village village = villageWithProductionRate(0, Instant.now());
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
     service.updateProduction(mill, 1L);
-    verify(repository).increaseWoodProduction(1L, mill.productionPerHour());
+
+    assertThat(village.getProduction().getWoodPerHour()).isEqualTo(mill.productionPerHour());
+    verify(repository).save(village);
   }
 
   @Test

@@ -36,18 +36,28 @@ public class ResourcesService {
 
   /**
    * Applies an arbitrary {@code delta} to the village's production rate for the resource produced
-   * by {@code building}. Used during upgrades where only the incremental gain should be added
-   * rather than the building's full production value.
+   * by {@code building}. Updates the entity directly so Hibernate's flush at transaction commit
+   * does not overwrite the change (which native SQL updates would cause via cache bypass).
    */
   public void updateProductionDelta(EconomicProduction building, long villageId, int delta) {
+    var village = repository.findById(villageId)
+        .orElseThrow(() -> new IllegalArgumentException("Village not found"));
+    ResourceProduction production = village.getProduction();
     switch (building.producedResource()) {
-      case WOOD -> repository.increaseWoodProduction(villageId, delta);
-      case FOOD -> repository.increaseFoodProduction(villageId, delta);
-      case BRICKS -> repository.increaseBricksProduction(villageId, delta);
-      case IRON -> repository.increaseIronProduction(villageId, delta);
+      case WOOD -> production.setWoodPerHour(production.getWoodPerHour() + delta);
+      case FOOD -> production.setFoodPerHour(production.getFoodPerHour() + delta);
+      case BRICKS -> production.setBricksPerHour(production.getBricksPerHour() + delta);
+      case IRON -> production.setIronPerHour(production.getIronPerHour() + delta);
       default ->
           throw new IllegalStateException("Unexpected resource: " + building.producedResource());
     }
+    repository.save(village);
+  }
+
+  public ResourceProduction getProduction(long villageId) {
+    return repository.findById(villageId)
+        .orElseThrow(() -> new IllegalArgumentException("Village not found"))
+        .getProduction();
   }
 
   /**
