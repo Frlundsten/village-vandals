@@ -35,6 +35,7 @@
     <BuildingUpgradeCard
       v-if="showUpgradeCard && currentBuilding"
       :building="currentBuilding"
+      :villageId="villageId"
       :currentResources="resourceStore"
       @upgrade="handleUpgrade"
       @close="showUpgradeCard = false"
@@ -222,7 +223,13 @@ onMounted(async () => {
           existingBuildings.forEach((building) => {
             if (constructionSiteId === building.constructionSiteId) {
               buildingSpritePromises.push(
-                addBuildingSprite(row, col, `/assets/Tiles/${building.type}.png`, building.constructionSiteId, building.level ?? 1)
+                addBuildingSprite(
+                  row,
+                  col,
+                  `/assets/Tiles/${building.type}.png`,
+                  building.constructionSiteId,
+                  building.level ?? 1,
+                ),
               )
             }
           })
@@ -285,8 +292,12 @@ function setInteractiveSpriteTile(sprite, tileWidth, tileHeight) {
   sprite.eventMode = 'static'
   sprite.cursor = 'pointer'
   sprite.hitArea = new Rectangle(-tileWidth / 2, -tileHeight * 2, tileWidth, tileHeight)
-  sprite.on('pointerover', () => { sprite.tint = 0xddddff })
-  sprite.on('pointerout', () => { sprite.tint = 0xffffff })
+  sprite.on('pointerover', () => {
+    sprite.tint = 0xddddff
+  })
+  sprite.on('pointerout', () => {
+    sprite.tint = 0xffffff
+  })
 }
 
 function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSiteId) {
@@ -328,7 +339,14 @@ async function handleBuildingSelection(type) {
   }
 }
 
-async function addBuildingSprite(row, col, texturePath, constructionSiteId, level = 1, yOffset = -95) {
+async function addBuildingSprite(
+  row,
+  col,
+  texturePath,
+  constructionSiteId,
+  level = 1,
+  yOffset = -95,
+) {
   const { tilewidth, tileheight } = mapDataRef
 
   const texture = await Assets.load(texturePath)
@@ -391,5 +409,12 @@ onBeforeUnmount(() => {
   if (app) app.destroy(true, { children: true })
 })
 
-defineExpose({ handleBuildingSelection, buildingsBySiteId, currentTile, loading, dragging, buildingBadges })
+defineExpose({
+  handleBuildingSelection,
+  buildingsBySiteId,
+  currentTile,
+  loading,
+  dragging,
+  buildingBadges,
+})
 </script>
