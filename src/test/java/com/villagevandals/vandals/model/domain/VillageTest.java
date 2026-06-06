@@ -1,6 +1,6 @@
 package com.villagevandals.vandals.model.domain;
 
-import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMICAL_PRODUCTION_RATE;
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_BASE_PRODUCTION_RATE;
 import static com.villagevandals.vandals.village.Village.initStarterVillage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -31,23 +31,22 @@ class VillageTest {
   }
 
   @Test
-  void newVillage_shouldHaveDefaultProductionRatesForAllResources() {
+  void newVillage_shouldHaveBaseProductionRateForAllResources() {
     Village v = new Village(0, 0, new User());
 
-    assertThat(v.getProduction().getFoodPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
-    assertThat(v.getProduction().getWoodPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
-    assertThat(v.getProduction().getBricksPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
-    assertThat(v.getProduction().getIronPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
+    assertThat(v.getProduction().getFoodPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(v.getProduction().getWoodPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(v.getProduction().getBricksPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(v.getProduction().getIronPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
   }
 
   @Test
-  void starterVillage_shouldHaveDefaultProductionRatesForAllResources() {
+  void starterVillage_shouldHaveBaseProductionRateForAllResources() {
     Village v = initStarterVillage(new User(), new Tile());
 
-    assertThat(v.getProduction().getFoodPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
-    assertThat(v.getProduction().getWoodPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
-    assertThat(v.getProduction().getBricksPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
-    assertThat(v.getProduction().getIronPerHour()).isEqualTo(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
+    assertThat(v.getProduction().getFoodPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(v.getProduction().getWoodPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(v.getProduction().getBricksPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(v.getProduction().getIronPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
   }
-
 }

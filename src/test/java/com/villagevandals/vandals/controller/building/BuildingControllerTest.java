@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.villagevandals.vandals.building.BuildingController;
-import com.villagevandals.vandals.web.UserInfoService;
 import com.villagevandals.vandals.building.BuildingService;
 import com.villagevandals.vandals.web.jwt.JwtService;
 import java.util.stream.Stream;
@@ -33,7 +32,6 @@ class BuildingControllerTest {
 
   @Autowired private MockMvc mvc;
 
-  @MockitoBean private UserInfoService userInfoService;
   @MockitoBean private JwtService jwtService;
 
   @Test

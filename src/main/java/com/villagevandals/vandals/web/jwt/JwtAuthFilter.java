@@ -1,6 +1,5 @@
 package com.villagevandals.vandals.web.jwt;
 
-import com.villagevandals.vandals.web.UserInfoService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,11 +20,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
   public static final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-  private final UserInfoService userInfoService;
   private final JwtService jwtService;
 
-  public JwtAuthFilter(UserInfoService userInfoService, JwtService jwtService) {
-    this.userInfoService = userInfoService;
+  public JwtAuthFilter(JwtService jwtService) {
     this.jwtService = jwtService;
   }
 

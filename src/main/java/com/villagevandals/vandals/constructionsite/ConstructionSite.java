@@ -24,7 +24,7 @@ public class ConstructionSite {
   @JoinColumn(name = "village_id")
   private Village village;
 
-  @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
   @JoinColumn(name = "building_id", referencedColumnName = "id", unique = true)
   private Building building;
 

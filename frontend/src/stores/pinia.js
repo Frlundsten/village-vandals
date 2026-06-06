@@ -1,19 +1,15 @@
-
-
-import { defineStore } from "pinia";
+import { defineStore } from 'pinia'
 
 export const useSessionStore = defineStore('session', {
   state: () => ({
-    user: null,
     token: localStorage.getItem('jwt_token') || null,
-    keycloakIdToken: localStorage.getItem('keycloak_id_token') || null,
   }),
 
   getters: {
     /** True when a JWT is present in state. Does not verify expiry — the backend enforces that. */
     isAuthenticated(state) {
       return !!state.token
-    }
+    },
   },
 
   actions: {
@@ -25,7 +21,6 @@ export const useSessionStore = defineStore('session', {
      */
     setToken(token, keycloakIdToken = null) {
       this.token = token
-      this.keycloakIdToken = keycloakIdToken
 
       if (token) {
         localStorage.setItem('jwt_token', token)
@@ -46,11 +41,9 @@ export const useSessionStore = defineStore('session', {
      */
     clearSession() {
       this.token = null
-      this.user = null
-      this.keycloakIdToken = null
       localStorage.removeItem('jwt_token')
       localStorage.removeItem('keycloak_id_token')
       localStorage.removeItem('villageId')
-    }
-  }
+    },
+  },
 })

@@ -42,6 +42,6 @@ export function handleNotOkResponse(response) {
 export async function handleNotOkRegister(response) {
   if (!response.ok) {
     const text = await response.text()
-    throw new Error(text || "Registration failed")
+    throw new Error(text || 'Registration failed')
   }
 }

@@ -1,5 +1,6 @@
 package com.villagevandals.vandals.resource;
 
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_BASE_PRODUCTION_RATE;
 import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMICAL_PRODUCTION_RATE;
 import static com.villagevandals.vandals.resource.Resource.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +32,20 @@ class ResourcesServiceTest {
   void setUp() {
     MockitoAnnotations.openMocks(this);
     service = new ResourcesService(repository);
+  }
+
+  @Test
+  void updateProduction_fromDefaultVillage_woodRateIsBaseRatePlusBuildingContribution() {
+    Village village = new Village(0, 0, mockUser);
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    service.updateProduction(new LumberMill(), 1L);
+
+    assertThat(village.getProduction().getWoodPerHour())
+        .isEqualTo(DEFAULT_BASE_PRODUCTION_RATE + DEFAULT_ECONOMICAL_PRODUCTION_RATE);
+    assertThat(village.getProduction().getBricksPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(village.getProduction().getIronPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(village.getProduction().getFoodPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
   }
 
   @Test
@@ -85,10 +100,27 @@ class ResourcesServiceTest {
   }
 
   @Test
-  void updateProduction_wood_increasesWoodProductionInDb() {
+  void updateProductionDelta_wood_incrementsEntityWoodPerHour() {
+    Village village = villageWithProductionRate(0, Instant.now());
+    village.getProduction().setWoodPerHour(100);
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    service.updateProductionDelta(new LumberMill(), 1L, 50);
+
+    assertThat(village.getProduction().getWoodPerHour()).isEqualTo(150);
+    verify(repository).save(village);
+  }
+
+  @Test
+  void updateProduction_wood_addsFullProductionRateToEntity() {
     LumberMill mill = new LumberMill();
+    Village village = villageWithProductionRate(0, Instant.now());
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
     service.updateProduction(mill, 1L);
-    verify(repository).increaseWoodProduction(1L, mill.productionPerHour());
+
+    assertThat(village.getProduction().getWoodPerHour()).isEqualTo(mill.productionPerHour());
+    verify(repository).save(village);
   }
 
   @Test

@@ -52,10 +52,7 @@ defineExpose({ sendInfo })
       </div>
 
       <!-- Close button -->
-      <button
-        @click="emit('closeMenu')"
-        class="btn btn-success w-full mt-4 rounded-b-xl"
-      >
+      <button @click="emit('closeMenu')" class="btn btn-success w-full mt-4 rounded-b-xl">
         Close
       </button>
     </div>

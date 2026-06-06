@@ -1,8 +1,8 @@
 <script setup>
-const KEYCLOAK_BASE = 'http://localhost:8080'
+const KEYCLOAK_BASE = import.meta.env.VITE_KEYCLOAK_BASE_URL
 const REALM = 'villagevandals'
 const CLIENT_ID = 'backend-service'
-const REDIRECT_URI = encodeURIComponent('http://localhost:5173/auth')
+const REDIRECT_URI = encodeURIComponent(`${import.meta.env.VITE_APP_URL}/auth`)
 
 const authUrl =
   `${KEYCLOAK_BASE}/realms/${REALM}/protocol/openid-connect/auth` +

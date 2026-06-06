@@ -21,9 +21,9 @@ class LumberMillTest {
         LumberMill lumberMill = new LumberMill();
         Map<String,Integer> cost = lumberMill.getUpgradeCost();
 
-        assertThat(cost.get("wood")).isEqualTo(200);
-        assertThat(cost.get("bricks")).isEqualTo(200);
-        assertThat(cost.get("food")).isEqualTo(200);
-        assertThat(cost.get("iron")).isEqualTo(200);
+        assertThat(cost.get("wood")).isEqualTo(160);
+        assertThat(cost.get("bricks")).isEqualTo(320);
+        assertThat(cost.get("food")).isEqualTo(160);
+        assertThat(cost.get("iron")).isEqualTo(160);
     }
 }

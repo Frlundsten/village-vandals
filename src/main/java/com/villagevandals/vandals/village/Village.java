@@ -5,8 +5,10 @@ import static java.util.Objects.requireNonNull;
 import com.villagevandals.vandals.app.Tile;
 import com.villagevandals.vandals.resource.ResourceProduction;
 import com.villagevandals.vandals.resource.ResourceStorage;
+import com.villagevandals.vandals.unit.VillageUnit;
 import com.villagevandals.vandals.user.User;
 import com.villagevandals.vandals.village.dto.VillageDTO;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,7 +16,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class Village {
@@ -71,6 +77,13 @@ public class Village {
 
   @Embedded private ResourceProduction production;
 
+  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  @JoinTable(
+      name = "village_unit",
+      joinColumns = @JoinColumn(name = "village_id"),
+      inverseJoinColumns = @JoinColumn(name = "unit_id"))
+  private List<VillageUnit> units = new ArrayList<>();
+
   public Village(
       int xCoordinate,
       int yCoordinate,
@@ -122,6 +135,10 @@ public class Village {
 
   public Long getId() {
     return id;
+  }
+
+  public List<VillageUnit> getUnits() {
+    return units;
   }
 
   public VillageDTO toDTO() {

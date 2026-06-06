@@ -5,7 +5,7 @@ import { useSessionStore } from '@/stores/pinia.js'
 import { apiRequest } from '@/util/api/api.js'
 import { BASE_URL } from '@/util/util.js'
 
-const REDIRECT_URI = 'http://localhost:5173/auth'
+const REDIRECT_URI = `${import.meta.env.VITE_APP_URL}/auth`
 const router = useRouter()
 const session = useSessionStore()
 

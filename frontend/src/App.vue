@@ -1,4 +1,4 @@
 <template>
-  <router-view/>
+  <router-view />
   <footer class="h-20"></footer>
 </template>

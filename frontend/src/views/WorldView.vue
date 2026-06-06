@@ -1,38 +1,38 @@
 <template>
   <div
-      class="iso-wrapper"
-      ref="wrapperRef"
-      @wheel.prevent="handleWheel"
-      @mousemove="handleMouseMove"
-      @pointerdown="handlePointerDown"
-      @pointermove="handlePointerMove"
-      @pointerup="handlePointerUp"
-      @pointerleave="handlePointerUp"
+    class="iso-wrapper"
+    ref="wrapperRef"
+    @wheel.prevent="handleWheel"
+    @mousemove="handleMouseMove"
+    @pointerdown="handlePointerDown"
+    @pointermove="handlePointerMove"
+    @pointerup="handlePointerUp"
+    @pointerleave="handlePointerUp"
   >
     <div
-        class="iso-grid"
-        :style="{
+      class="iso-grid"
+      :style="{
         transform: `translate(${translate.x}px, ${translate.y}px) scale(${zoom})`,
-        transformOrigin: `${origin.x}px ${origin.y}px`
+        transformOrigin: `${origin.x}px ${origin.y}px`,
       }"
     >
       <div
-          v-for="(tile, index) in tiles"
-          :key="index"
-          class="iso-tile"
-          :style="{
+        v-for="(tile, index) in tiles"
+        :key="index"
+        class="iso-tile"
+        :style="{
           backgroundColor: tile.color,
           left: `${getX(index)}px`,
-          top: `${getY(index)}px`
+          top: `${getY(index)}px`,
         }"
-          @click="colorTile(index)"
+        @click="colorTile(index)"
       ></div>
     </div>
   </div>
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue'
+import { onMounted, ref } from 'vue'
 import { fetchUsers } from '@/util/api/villages.js'
 
 const gridSize = 10
@@ -52,12 +52,12 @@ const tiles = ref(
       col,
       color: defaultColor,
     }
-  })
+  }),
 )
 
-const tileMap = new Map();
+const tileMap = new Map()
 
-tiles.value.forEach(tile => {
+tiles.value.forEach((tile) => {
   tileMap.set(`${tile.row}-${tile.col}`, tile)
 })
 
@@ -82,21 +82,20 @@ const tileWidth = 80
 const tileHeight = 80
 
 onMounted(async () => {
-
   //fetch all players villages.
-  const users = await fetchUsers();
+  const users = await fetchUsers()
   console.log(users)
 
-  users.forEach(village => {
-    const key = `${village.y}-${village.x}`; // row-col
-    const tile = tileMap.get(key);
+  users.forEach((village) => {
+    const key = `${village.y}-${village.x}` // row-col
+    const tile = tileMap.get(key)
     if (tile) {
-      tile.color = '#f44336'; // mark as occupied
+      tile.color = '#f44336' // mark as occupied
     }
-  });
+  })
 
   // Calculate grid width and height in pixels using your isometric formulas
-  const minX = getX((gridSize - 1)) // left-most
+  const minX = getX(gridSize - 1) // left-most
   const maxX = getX(gridSize * (gridSize - 1)) // right-most
   const minY = getY(0) // top-most
   const maxY = getY(gridSize * gridSize - 1) // bottom-most
@@ -191,15 +190,12 @@ function handlePointerUp() {
   width: 80px;
   height: 80px;
   transform: rotateX(60deg);
-  clip-path: polygon(
-      50% 0%,
-      100% 50%,
-      50% 100%,
-      0% 50%
-  );
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
   box-sizing: border-box;
   background-color: #eee;
-  transition: background-color 0.2s, transform 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
   cursor: pointer;
 }
 </style>
