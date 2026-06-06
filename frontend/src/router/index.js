@@ -2,8 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import World from '@/views/WorldView.vue'
 import { useSessionStore } from '@/stores/pinia.js'
-import RegisterView from '@/views/RegisterView.vue'
 import VillageNew from '@/components/VillageNew.vue'
+import BuildingsPanel from '@/components/BuildingsPanel.vue'
 import LoginOrRegister from '@/views/LoginOrRegister.vue'
 import AuthView from '@/views/AuthView.vue'
 
@@ -20,13 +20,13 @@ const router = createRouter({
           name: '-',
           path: '',
           redirect: { name: 'village' },
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: true },
         },
         {
           path: 'village/:villageId',
           name: 'Village',
           component: VillageNew,
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: true },
         },
         {
           path: 'map',
@@ -38,6 +38,12 @@ const router = createRouter({
           path: 'village',
           name: 'village',
           component: VillageNew,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'buildings',
+          name: 'Buildings',
+          component: BuildingsPanel,
           meta: { requiresAuth: true },
         },
       ],
@@ -53,11 +59,6 @@ const router = createRouter({
       component: AuthView,
     },
     {
-      path: '/register',
-      name: 'register',
-      component: RegisterView,
-    },
-    {
       path: '/about',
       name: 'about',
       component: () => import('../views/AboutView.vue'),
@@ -68,7 +69,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const session = useSessionStore()
 
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
   if (requiresAuth && !session.isAuthenticated) {
     return next('/login')

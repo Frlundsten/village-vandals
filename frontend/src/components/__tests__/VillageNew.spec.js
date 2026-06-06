@@ -85,6 +85,11 @@ vi.mock('@/util/api/resources.js', () => ({
   refreshStorage: vi.fn().mockResolvedValue({ food: 0, wood: 0, bricks: 0, iron: 0 }),
 }))
 
+vi.mock('@/util/api/units.js', () => ({
+  trainUnit: vi.fn(),
+  fetchRoster: vi.fn(),
+}))
+
 describe('VillageNew — drag vs click', () => {
   it('a small pointer movement after clicking a tile does not activate dragging', async () => {
     setActivePinia(createPinia())
@@ -121,8 +126,9 @@ describe('VillageNew — drag vs click', () => {
 
     // Get the dragLayer's globalpointermove handler
     const graphicsInstance = Graphics.mock.results[0].value
-    const moveHandler = graphicsInstance.on.mock.calls
-      .find((c) => c[0] === 'globalpointermove')?.[1]
+    const moveHandler = graphicsInstance.on.mock.calls.find(
+      (c) => c[0] === 'globalpointermove',
+    )?.[1]
 
     // Simulate: pointer moves only 2 px — under the 5 px threshold
     moveHandler?.({ global: { x: 302, y: 200 }, buttons: 1 })
@@ -171,8 +177,9 @@ describe('VillageNew — drag guard when press originates outside canvas', () =>
 
     // Get globalpointermove handler — WITHOUT triggering canvas pointerdown first
     const graphicsInstance = Graphics.mock.results[0].value
-    const moveHandler = graphicsInstance.on.mock.calls
-      .find((c) => c[0] === 'globalpointermove')?.[1]
+    const moveHandler = graphicsInstance.on.mock.calls.find(
+      (c) => c[0] === 'globalpointermove',
+    )?.[1]
 
     // Simulate a large move with button held (as if pressed on an overlay)
     moveHandler?.({ global: { x: 400, y: 300 }, buttons: 1 })
@@ -251,11 +258,11 @@ describe('VillageNew — construction site tile zIndex', () => {
     await flushPromises()
 
     const sprites = Sprite.mock.results.map((r) => r.value)
-    const plainSprite = sprites[0]         // row=0, col=0
-    const siteSprite  = sprites[1]         // row=0, col=1
+    const plainSprite = sprites[0] // row=0, col=0
+    const siteSprite = sprites[1] // row=0, col=1
 
-    expect(plainSprite.zIndex).toBeUndefined()   // terrain — no explicit zIndex
-    expect(siteSprite.zIndex).toBeUndefined()    // construction site tile — no explicit zIndex
+    expect(plainSprite.zIndex).toBeUndefined() // terrain — no explicit zIndex
+    expect(siteSprite.zIndex).toBeUndefined() // construction site tile — no explicit zIndex
 
     wrapper.unmount()
   })
@@ -291,7 +298,9 @@ describe('VillageNew — handleBuildingSelection', () => {
   })
 
   it('calls addBuildingSprite after successful construction', async () => {
-    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'Farm', level: 1 }])
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 2, type: 'Farm', level: 1 },
+    ])
 
     await wrapper.vm.handleBuildingSelection('Farm')
     await flushPromises()
@@ -310,7 +319,9 @@ describe('VillageNew — handleBuildingSelection', () => {
   })
 
   it('loads /assets/Tiles/BRICKYARD.png when BRICKYARD is selected', async () => {
-    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'BRICKYARD', level: 1 }])
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 2, type: 'BRICKYARD', level: 1 },
+    ])
 
     await wrapper.vm.handleBuildingSelection('BRICKYARD')
     await flushPromises()
@@ -319,7 +330,9 @@ describe('VillageNew — handleBuildingSelection', () => {
   })
 
   it('building container zIndex is greater than base tile zIndex at the same row+col', async () => {
-    buildingsApi.fetchBuildings.mockResolvedValue([{ constructionSiteId: 2, type: 'FARM', level: 1 }])
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 2, type: 'FARM', level: 1 },
+    ])
 
     const { Container } = await import('pixi.js')
 
@@ -330,7 +343,9 @@ describe('VillageNew — handleBuildingSelection', () => {
     const buildingContainer = Container.mock.results[1].value
 
     // currentTile is row=1, col=1 → base tile zIndex = 2, building container zIndex must be > 2
-    expect(buildingContainer.zIndex).toBeGreaterThan(wrapper.vm.currentTile.row + wrapper.vm.currentTile.col)
+    expect(buildingContainer.zIndex).toBeGreaterThan(
+      wrapper.vm.currentTile.row + wrapper.vm.currentTile.col,
+    )
   })
 })
 
