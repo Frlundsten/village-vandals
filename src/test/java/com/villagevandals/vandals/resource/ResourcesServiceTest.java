@@ -1,5 +1,6 @@
 package com.villagevandals.vandals.resource;
 
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_BASE_PRODUCTION_RATE;
 import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMICAL_PRODUCTION_RATE;
 import static com.villagevandals.vandals.resource.Resource.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +32,20 @@ class ResourcesServiceTest {
   void setUp() {
     MockitoAnnotations.openMocks(this);
     service = new ResourcesService(repository);
+  }
+
+  @Test
+  void updateProduction_fromDefaultVillage_woodRateIsBaseRatePlusBuildingContribution() {
+    Village village = new Village(0, 0, mockUser);
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    service.updateProduction(new LumberMill(), 1L);
+
+    assertThat(village.getProduction().getWoodPerHour())
+        .isEqualTo(DEFAULT_BASE_PRODUCTION_RATE + DEFAULT_ECONOMICAL_PRODUCTION_RATE);
+    assertThat(village.getProduction().getBricksPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(village.getProduction().getIronPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
+    assertThat(village.getProduction().getFoodPerHour()).isEqualTo(DEFAULT_BASE_PRODUCTION_RATE);
   }
 
   @Test

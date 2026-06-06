@@ -1,6 +1,6 @@
 package com.villagevandals.vandals.resource;
 
-import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_ECONOMICAL_PRODUCTION_RATE;
+import static com.villagevandals.vandals.gameconfig.GameDefaults.DEFAULT_BASE_PRODUCTION_RATE;
 
 import jakarta.persistence.Embeddable;
 
@@ -21,7 +21,7 @@ public class ResourceProduction {
   }
 
   public static ResourceProduction withDefaults() {
-    return new ResourceProduction(DEFAULT_ECONOMICAL_PRODUCTION_RATE);
+    return new ResourceProduction(DEFAULT_BASE_PRODUCTION_RATE);
   }
 
   public int getWoodPerHour() {
