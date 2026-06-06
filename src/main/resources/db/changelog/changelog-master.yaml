@@ -324,6 +324,105 @@ databaseChangeLog:
             defaultValueNumeric: 0
 
   - changeSet:
+      id: 010-create-unit-table
+      author: f
+      changes:
+        - createTable:
+            tableName: unit
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: unit_type
+                  type: VARCHAR(31)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: hp
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: damage
+                  type: INT
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 011-create-village-unit-table
+      author: f
+      changes:
+        - createTable:
+            tableName: village_unit
+            columns:
+              - column:
+                  name: village_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+        - addPrimaryKey:
+            tableName: village_unit
+            columnNames: village_id, unit_id
+            constraintName: pk_village_unit
+        - addForeignKeyConstraint:
+            baseTableName: village_unit
+            baseColumnNames: village_id
+            constraintName: fk_village_unit_village
+            referencedTableName: village
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: village_unit
+            baseColumnNames: unit_id
+            constraintName: fk_village_unit_unit
+            referencedTableName: unit
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: drop-password-column-from-users
+      author: f
+      changes:
+        - dropColumn:
+            tableName: users
+            columnName: password
+
+  - changeSet:
+      id: correct-village-production-rate-offset
+      author: f
+      changes:
+        - sql:
+            sql: >
+              UPDATE village SET
+                wood_per_hour   = GREATEST(wood_per_hour   - 18000, 0),
+                bricks_per_hour = GREATEST(bricks_per_hour - 18000, 0),
+                iron_per_hour   = GREATEST(iron_per_hour   - 18000, 0),
+                food_per_hour   = GREATEST(food_per_hour   - 18000, 0)
+
+  - changeSet:
+      id: add-base-production-rate-to-villages
+      author: f
+      changes:
+        - sql:
+            sql: >
+              UPDATE village SET
+                wood_per_hour   = wood_per_hour   + 3600,
+                bricks_per_hour = bricks_per_hour + 3600,
+                iron_per_hour   = iron_per_hour   + 3600,
+                food_per_hour   = food_per_hour   + 3600
+
+  - changeSet:
       id: add-refresh-token-table
       author: f
       changes:
