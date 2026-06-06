@@ -25,11 +25,11 @@ async function handleLogout() {
 
   if (keycloakIdToken) {
     const params = new URLSearchParams({
-      post_logout_redirect_uri: 'http://localhost:5173/login',
+      post_logout_redirect_uri: `${import.meta.env.VITE_APP_URL}/login`,
       id_token_hint: keycloakIdToken,
       client_id: 'backend-service',
     })
-    window.location.href = `http://localhost:8080/realms/villagevandals/protocol/openid-connect/logout?${params}`
+    window.location.href = `${import.meta.env.VITE_KEYCLOAK_BASE_URL}/realms/villagevandals/protocol/openid-connect/logout?${params}`
   } else {
     router.push('/login')
   }
@@ -171,7 +171,7 @@ async function updateResourceUI() {
               >🏘️️ Village</RouterLink
             >
           </li>
-          <li><a @click="goTo('buildings')">🏗️ Buildings</a></li>
+          <li><RouterLink to="/buildings">🏗️ Buildings</RouterLink></li>
           <li><a @click="goTo('army')">🛡️ Army</a></li>
           <li>
             <RouterLink to="/map">🗺️ World Map</RouterLink>

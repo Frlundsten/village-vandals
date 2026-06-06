@@ -1,0 +1,8 @@
+.git
+frontend
+target
+themes
+providers
+custom-theme
+*.md
+.env
