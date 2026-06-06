@@ -21,23 +21,15 @@ public class User implements UserDetails {
 
   @Id private UUID id;
   private String username;
-  private String password;
   private String email;
   private String roles;
 
   @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
   private List<Village> villages = new ArrayList<>();
 
-  public User(
-      UUID id,
-      String username,
-      String password,
-      String email,
-      String roles,
-      List<Village> villages) {
+  public User(UUID id, String username, String email, String roles, List<Village> villages) {
     this.id = id;
     this.username = username;
-    this.password = password;
     this.email = email;
     this.roles = roles;
     this.villages = villages;
@@ -99,9 +91,6 @@ public class User implements UserDetails {
         + ", username='"
         + username
         + '\''
-        + ", password='"
-        + password
-        + '\''
         + ", villages="
         + villages
         + '}';
@@ -113,7 +102,6 @@ public class User implements UserDetails {
     User user = (User) o;
     return Objects.equals(id, user.id)
         && Objects.equals(username, user.username)
-        && Objects.equals(password, user.password)
         && Objects.equals(email, user.email)
         && Objects.equals(roles, user.roles)
         && Objects.equals(villages, user.villages);
@@ -121,6 +109,6 @@ public class User implements UserDetails {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, username, password, email, roles, villages);
+    return Objects.hash(id, username, email, roles, villages);
   }
 }

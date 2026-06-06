@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -39,13 +38,12 @@ class AuthControllerTest {
   @Mock JwtService jwtService;
   @Mock RefreshTokenService refreshTokenService;
   @Mock RestTemplate restTemplate;
-  @Mock AuthenticationManager authenticationManager;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
     AuthController controller =
-        new AuthController(jwtService, authenticationManager, refreshTokenService, userService, restTemplate);
+        new AuthController(jwtService, refreshTokenService, userService, restTemplate);
     ReflectionTestUtils.setField(controller, "keycloakBaseUrl", "http://localhost:8080");
     ReflectionTestUtils.setField(controller, "secureCookie", false);
     mvc = MockMvcBuilders.standaloneSetup(controller).build();
@@ -153,6 +151,18 @@ class AuthControllerTest {
         .andExpect(status().isOk());
 
     verify(refreshTokenService).revokeByUsername("keycloakUser");
+  }
+
+  @Test
+  void login_localPasswordEndpoint_isRemoved() throws Exception {
+    mvc.perform(post("/auth/login").contentType(APPLICATION_JSON).content("{}"))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void generateToken_localPasswordEndpoint_isRemoved() throws Exception {
+    mvc.perform(post("/auth/generateToken").contentType(APPLICATION_JSON).content("{}"))
+        .andExpect(status().isNotFound());
   }
 
   private String buildFakeIdToken(String username, String email) {

@@ -22,10 +22,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,7 +37,6 @@ public class AuthController {
   private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
   private final JwtService jwtService;
-  private final AuthenticationManager authenticationManager;
   private final RefreshTokenService refreshTokenService;
   private final UserService userService;
   private final RestTemplate restTemplate;
@@ -60,43 +55,13 @@ public class AuthController {
 
   AuthController(
       JwtService jwtService,
-      AuthenticationManager authenticationManager,
       RefreshTokenService refreshTokenService,
       UserService userService,
       RestTemplate restTemplate) {
     this.jwtService = jwtService;
-    this.authenticationManager = authenticationManager;
     this.refreshTokenService = refreshTokenService;
     this.userService = userService;
     this.restTemplate = restTemplate;
-  }
-
-  @PostMapping("/generateToken")
-  public String authenticateAndGetToken(@RequestBody AuthRequest authRequest) {
-    Authentication authentication =
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(
-                authRequest.username(), authRequest.password()));
-
-    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-    return jwtService.generateToken(userDetails);
-  }
-
-  @PostMapping("/login")
-  public ResponseEntity<Object> login(
-      @RequestBody AuthRequest request, HttpServletResponse response) {
-    Authentication auth =
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.username(), request.password()));
-
-    UserDetails user = (UserDetails) auth.getPrincipal();
-
-    String accessToken = jwtService.generateToken(user);
-    RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getUsername());
-
-    response.addHeader(HttpHeaders.SET_COOKIE, buildRefreshCookie(refreshToken.getToken()).toString());
-
-    return ResponseEntity.ok(AuthResponse.local(accessToken));
   }
 
   @PostMapping("/refresh")
