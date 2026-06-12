@@ -65,6 +65,33 @@ describe('useTrainingQueue', () => {
     expect(getResult().hasActiveFor(99)).toBe(false)
   })
 
+  it('hasActiveFor remains true under clock skew until the corrected countdown elapses', async () => {
+    // Backend clock lags the client clock by 70s. finishesAt looks "in the past" against
+    // raw Date.now(), but is ~5s in the future relative to serverTime.
+    const now = Date.now()
+    const serverTime = new Date(now - 70000).toISOString()
+    const finishesAt = new Date(now - 70000 + 5000).toISOString()
+
+    unitsApi.fetchTrainingQueue.mockResolvedValue([
+      { id: 1, unitType: 'VANDAL', buildingId: 42, finishesAt, serverTime, queuePosition: 1 },
+    ])
+
+    const { getResult } = mountComposable(1)
+    await flushPromises()
+
+    expect(getResult().hasActiveFor(42)).toBe(true)
+
+    // One tick must not immediately drop the order due to clock skew
+    vi.advanceTimersByTime(100)
+    await nextTick()
+    expect(getResult().hasActiveFor(42)).toBe(true)
+
+    // Once the corrected duration elapses, the order is removed
+    vi.advanceTimersByTime(5000)
+    await nextTick()
+    expect(getResult().hasActiveFor(42)).toBe(false)
+  })
+
   it('hasActiveFor returns false when queue is empty', async () => {
     unitsApi.fetchTrainingQueue.mockResolvedValue([])
 
