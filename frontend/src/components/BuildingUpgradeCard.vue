@@ -78,6 +78,7 @@ const TICK_INTERVAL_MS = 100
 const trainingOrders = ref([])
 let countdownId = null
 let mountFetchCancelled = false
+let clockOffsetMs = 0
 
 const trainError = ref(null)
 const training = ref(false)
@@ -100,17 +101,23 @@ const activeCountdown = computed(() => {
   return (activeOrder.value.remainingMs / 1000).toFixed(1) + 's'
 })
 
+function updateClockOffset(orders) {
+  if (orders.length > 0 && orders[0].serverTime) {
+    clockOffsetMs = new Date(orders[0].serverTime).getTime() - Date.now()
+  }
+}
+
 function enrichOrder(order) {
   return {
     ...order,
-    remainingMs: Math.max(0, new Date(order.finishesAt).getTime() - Date.now()),
+    remainingMs: Math.max(0, new Date(order.finishesAt).getTime() - (Date.now() + clockOffsetMs)),
   }
 }
 
 function startCountdown() {
   if (countdownId !== null) return
   countdownId = setInterval(() => {
-    const now = Date.now()
+    const now = Date.now() + clockOffsetMs
     trainingOrders.value = trainingOrders.value.map((o) => ({
       ...o,
       remainingMs: Math.max(0, new Date(o.finishesAt).getTime() - now),
@@ -135,6 +142,7 @@ onMounted(async () => {
   try {
     const serverQueue = await fetchTrainingQueue(props.villageId)
     if (!mountFetchCancelled && serverQueue.length > 0) {
+      updateClockOffset(serverQueue)
       trainingOrders.value = serverQueue.map(enrichOrder)
       startCountdown()
     }
@@ -152,6 +160,7 @@ async function handleTrainVandal() {
     const updatedQueue = await trainUnit(props.villageId, props.building.buildingId, trainQuantity.value)
     if (Array.isArray(updatedQueue) && updatedQueue.length > 0) {
       mountFetchCancelled = true
+      updateClockOffset(updatedQueue)
       trainingOrders.value = updatedQueue.map(enrichOrder)
       startCountdown()
     }
