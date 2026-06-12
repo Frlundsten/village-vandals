@@ -1,16 +1,20 @@
 <script setup>
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, useRouter, useRoute } from 'vue-router'
 
 import { computed, onMounted, ref, watch } from 'vue'
 import Avatar from '@/components/Avatar.vue'
 
 import { useSessionStore } from '@/stores/pinia.js'
 import { useResourceStore } from '@/stores/resources.js'
+import { useArmyStore } from '@/stores/army.js'
 import { storeToRefs } from 'pinia'
 import { apiRequest } from '@/util/api/api.js'
 
 const session = useSessionStore()
 const router = useRouter()
+const route = useRoute()
+
+const armyStore = useArmyStore()
 
 async function handleLogout() {
   const keycloakIdToken = localStorage.getItem('keycloak_id_token')
@@ -73,6 +77,7 @@ async function loadUserData() {
     localStorage.setItem('villageId', village.id)
 
     await resourceStore.refresh(village.id)
+    await armyStore.refresh(village.id)
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     clearUserData()
@@ -84,9 +89,9 @@ function clearUserData() {
   currentVillage.value = { id: 0, name: '' }
 }
 
-function goTo(section) {
-  console.log(`Navigate to ${section}`)
-}
+const showArmyPanel = computed(
+  () => armyStore.roster.length > 0 && route.path !== '/army',
+)
 
 const safeVillageId = computed(() => {
   return currentVillage.value?.id ?? Number(localStorage.getItem('villageId'))
@@ -172,7 +177,7 @@ async function updateResourceUI() {
             >
           </li>
           <li><RouterLink to="/buildings">🏗️ Buildings</RouterLink></li>
-          <li><a @click="goTo('army')">🛡️ Army</a></li>
+          <li><RouterLink to="/army">🛡️ Army</RouterLink></li>
           <li>
             <RouterLink to="/map">🗺️ World Map</RouterLink>
           </li>
@@ -182,6 +187,19 @@ async function updateResourceUI() {
         <button v-if="isAuthenticated" @click="handleLogout" class="btn btn-md w-full mt-4">
           Logout
         </button>
+
+        <!-- Army mini-panel: compact unit summary below Logout -->
+        <div v-if="showArmyPanel" class="mt-3" data-testid="army-mini-panel">
+          <div
+            v-for="unit in armyStore.roster"
+            :key="unit.unitType"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-200 mb-1 text-sm"
+          >
+            <span>⚔️</span>
+            <span class="flex-1 font-medium">{{ unit.unitType }}</span>
+            <span class="badge badge-sm">× {{ unit.count }}</span>
+          </div>
+        </div>
       </aside>
 
       <main class="flex-1">

@@ -23,4 +23,7 @@ public class GameDefaults {
     public static final int VANDAL_HP = 4;
     public static final int VANDAL_DAMAGE = 1;
 
+    // Training queue
+    public static final int TRAINING_DURATION_SECONDS = 5;
+
 }

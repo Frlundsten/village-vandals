@@ -4,6 +4,7 @@ import World from '@/views/WorldView.vue'
 import { useSessionStore } from '@/stores/pinia.js'
 import VillageNew from '@/components/VillageNew.vue'
 import BuildingsPanel from '@/components/BuildingsPanel.vue'
+import ArmyView from '@/views/ArmyView.vue'
 import LoginOrRegister from '@/views/LoginOrRegister.vue'
 import AuthView from '@/views/AuthView.vue'
 
@@ -44,6 +45,12 @@ const router = createRouter({
           path: 'buildings',
           name: 'Buildings',
           component: BuildingsPanel,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'army',
+          name: 'Army',
+          component: ArmyView,
           meta: { requiresAuth: true },
         },
       ],

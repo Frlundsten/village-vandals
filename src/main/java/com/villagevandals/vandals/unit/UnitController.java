@@ -25,20 +25,28 @@ public class UnitController {
 
   @PostMapping("/train")
   public ResponseEntity<?> trainUnit(@RequestBody TrainRequestDTO dto) {
-    LOG.debug("Training unit for village {} at building {}", dto.villageId(), dto.buildingId());
+    LOG.debug(
+        "Training {} unit(s) for village {} at building {}",
+        dto.quantity(), dto.villageId(), dto.buildingId());
     try {
-      TrainResponseDTO response = unitService.trainVandal(dto.villageId(), dto.buildingId());
-      return ResponseEntity.ok(response);
+      List<TrainingOrderDTO> queue =
+          unitService.trainVandal(dto.villageId(), dto.buildingId(), dto.quantity());
+      return ResponseEntity.ok(queue);
     } catch (IllegalArgumentException e) {
       LOG.warn("Train unit failed: {}", e.getMessage());
       return ResponseEntity.badRequest().body(e.getMessage());
     }
   }
 
+  @GetMapping("/training")
+  public ResponseEntity<List<TrainingOrderDTO>> getTrainingQueue(@RequestParam long villageId) {
+    LOG.debug("Fetching training queue for village {}", villageId);
+    return ResponseEntity.ok(unitService.getTrainingQueue(villageId));
+  }
+
   @GetMapping
   public ResponseEntity<List<UnitRosterDTO>> getRoster(@RequestParam long villageId) {
     LOG.debug("Fetching unit roster for village {}", villageId);
-    List<UnitRosterDTO> roster = unitService.getRoster(villageId);
-    return ResponseEntity.ok(roster);
+    return ResponseEntity.ok(unitService.getRoster(villageId));
   }
 }
