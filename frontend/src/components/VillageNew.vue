@@ -10,18 +10,24 @@
     </div>
 
     <!-- Level badges rendered as HTML so they stay at a fixed CSS size regardless of map zoom -->
-    <div
-      v-for="badge in buildingBadges"
-      :key="badge.constructionSiteId"
-      class="absolute z-20 pointer-events-none select-none -translate-x-1/2"
-      :style="{ left: badge.x + 'px', top: badge.y + 'px' }"
-    >
+    <template v-for="badge in buildingBadges" :key="badge.constructionSiteId">
       <div
-        class="flex items-center gap-1 px-2.5 py-0.5 rounded-full border-2 border-amber-400 bg-neutral/90 shadow-[0_2px_8px_rgba(0,0,0,0.6)] font-bold text-white text-sm whitespace-nowrap"
+        class="absolute z-20 pointer-events-none select-none -translate-x-1/2"
+        :style="{ left: badge.x + 'px', top: badge.y + 'px' }"
       >
-        <span class="text-amber-400 text-xs font-normal leading-none">Lv</span>{{ badge.level }}
+        <div
+          class="flex items-center gap-1 px-2.5 py-0.5 rounded-full border-2 border-amber-400 bg-neutral/90 shadow-[0_2px_8px_rgba(0,0,0,0.6)] font-bold text-white text-sm whitespace-nowrap"
+        >
+          <span class="text-amber-400 text-xs font-normal leading-none">Lv</span>{{ badge.level }}
+        </div>
       </div>
-    </div>
+      <!-- Pulsating training indicator: shown when this barrack has an active training order -->
+      <div
+        v-if="trainingQueue.hasActiveFor(badge.constructionSiteId)"
+        class="absolute z-10 pointer-events-none animate-pulse ring-4 ring-amber-400 rounded-sm"
+        :style="{ left: badge.x - 32 + 'px', top: badge.y - 48 + 'px', width: '64px', height: '64px' }"
+      ></div>
+    </template>
 
     <BuildingMenu
       :tileInfo="currentTile"
@@ -54,6 +60,7 @@ import BuildingUpgradeCard from '@/components/BuildingUpgradeCard.vue'
 import { constructBuilding, fetchBuildings, upgradeBuilding } from '@/util/api/buildings.js'
 import { useResourceStore } from '@/stores/resources.js'
 import { clampMapPosition } from '@/util/clampMapPosition.js'
+import { useTrainingQueue } from '@/composables/useTrainingQueue.js'
 
 const route = useRoute()
 const villageId = Number(route.params.villageId) || Number(localStorage.getItem('villageId'))
@@ -64,6 +71,7 @@ let container
 let mapDataRef = null
 
 const resourceStore = useResourceStore()
+const trainingQueue = useTrainingQueue(villageId)
 
 const loading = ref(true)
 const showMenu = ref(false)

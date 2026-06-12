@@ -36,6 +36,7 @@ build/
 .env
 
 .claude/
+.claude/settings.local.json
 /.agents
 
 skills-lock.json

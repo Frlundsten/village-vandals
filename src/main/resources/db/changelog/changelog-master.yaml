@@ -455,3 +455,80 @@ databaseChangeLog:
                   type: TIMESTAMP
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: 012-create-training-order-table
+      author: f
+      changes:
+        - createTable:
+            tableName: training_order
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: village_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: building_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit_type
+                  type: VARCHAR(31)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: queued_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finishes_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: training_order
+            baseColumnNames: village_id
+            constraintName: fk_training_order_village
+            referencedTableName: village
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: training_order
+            indexName: idx_training_order_village_completed_finishes
+            columns:
+              - column:
+                  name: village_id
+              - column:
+                  name: completed
+              - column:
+                  name: finishes_at
+
+  - changeSet:
+      id: 013-add-training-order-quantity
+      author: f
+      changes:
+        - addColumn:
+            tableName: training_order
+            columns:
+              - column:
+                  name: quantity
+                  type: INT
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false

@@ -142,19 +142,5 @@ Buildings use **Hibernate single-table inheritance** (discriminator column `buil
 
 ### Key Design Decisions
 - **Keycloak-only auth**: No local passwords. Keycloak handles identity; the backend issues its own short-lived internal JWT after the OAuth2 callback so the rest of the API is decoupled from Keycloak token format.
-- **Stateless JWT + HTTP-only refresh cookie**: JWT for stateless REST; refresh cookie for silent renewal without exposing the long-lived token to JS.
-- **Single-table inheritance for buildings**: Simplifies queries but means all building columns live in one table.
 - **Async resource production**: Villages track production rates in the DB; resource amounts are calculated from elapsed time (checked on fetch, not via a background job per village). The formula is `stored + rate * (secondsElapsed / 3600.0)` — `DEFAULT_PRODUCTION_PER_HOUR = 3600` is the seconds-per-hour divisor constant, not itself a rate. `DEFAULT_ECONOMICAL_PRODUCTION_RATE = 18000` is the base per-building rate. Before any resource deduction, always call `snapshotCurrentResources()` to commit accumulated resources first; `getCurrentResourceStorage()` computes without writing (display only).
 - **CORS**: Allowed origins are `localhost:80` and `localhost:5173` — will need updating for production.
-
-### Code Intelligence
-
-Prefer LSP over Grep/Read for code navigation — it's faster, precise, and avoids reading entire files:
-- `workspaceSymbol` to find where something is defined
-- `findReferences` to see all usages across the codebase
-- `goToDefinition` / `goToImplementation` to jump to source
-- `hover` for type info without reading the file
-
-Use Grep only when LSP isn't available or for text/pattern searches (comments, strings, config).
-
-After writing or editing code, check LSP diagnostics and fix errors before proceeding.
