@@ -32,15 +32,17 @@ class UnitControllerTest {
   void getTrainingQueue_returnsOrdersSortedByFinishesAt() throws Exception {
     Instant t1 = Instant.parse("2099-01-01T00:00:05Z");
     Instant t2 = Instant.parse("2099-01-01T00:00:10Z");
+    Instant serverTime = Instant.now();
     when(unitService.getTrainingQueue(42L)).thenReturn(List.of(
-        new TrainingOrderDTO(1L, "VANDAL", 10L, t1, 1, 1),
-        new TrainingOrderDTO(2L, "VANDAL", 10L, t2, 1, 2)));
+        new TrainingOrderDTO(1L, "VANDAL", 10L, t1, 1, 1, serverTime),
+        new TrainingOrderDTO(2L, "VANDAL", 10L, t2, 1, 2, serverTime)));
 
     mvc.perform(get("/unit/training").param("villageId", "42"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].queuePosition").value(1))
-        .andExpect(jsonPath("$[1].queuePosition").value(2));
+        .andExpect(jsonPath("$[1].queuePosition").value(2))
+        .andExpect(jsonPath("$[0].serverTime").exists());
   }
 
   @Test
@@ -56,7 +58,7 @@ class UnitControllerTest {
   void trainUnit_validRequest_returnsQueueWithNewOrder() throws Exception {
     Instant finish = Instant.parse("2099-01-01T00:00:05Z");
     when(unitService.trainVandal(1L, 10L, 1)).thenReturn(
-        List.of(new TrainingOrderDTO(1L, "VANDAL", 10L, finish, 1, 1)));
+        List.of(new TrainingOrderDTO(1L, "VANDAL", 10L, finish, 1, 1, Instant.now())));
 
     mvc.perform(post("/unit/train").contentType(APPLICATION_JSON)
             .content("{\"villageId\":1,\"buildingId\":10,\"quantity\":1}"))
@@ -64,20 +66,22 @@ class UnitControllerTest {
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].unitType").value("VANDAL"))
         .andExpect(jsonPath("$[0].quantity").value(1))
-        .andExpect(jsonPath("$[0].queuePosition").value(1));
+        .andExpect(jsonPath("$[0].queuePosition").value(1))
+        .andExpect(jsonPath("$[0].serverTime").exists());
   }
 
   @Test
   void trainUnit_batchRequest_passesQuantityThroughAndReturnsBatchOrder() throws Exception {
     Instant finish = Instant.parse("2099-01-01T00:01:05Z");
     when(unitService.trainVandal(1L, 10L, 5)).thenReturn(
-        List.of(new TrainingOrderDTO(1L, "VANDAL", 10L, finish, 5, 1)));
+        List.of(new TrainingOrderDTO(1L, "VANDAL", 10L, finish, 5, 1, Instant.now())));
 
     mvc.perform(post("/unit/train").contentType(APPLICATION_JSON)
             .content("{\"villageId\":1,\"buildingId\":10,\"quantity\":5}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
-        .andExpect(jsonPath("$[0].quantity").value(5));
+        .andExpect(jsonPath("$[0].quantity").value(5))
+        .andExpect(jsonPath("$[0].serverTime").exists());
   }
 
   @Test

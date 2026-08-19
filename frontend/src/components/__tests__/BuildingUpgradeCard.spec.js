@@ -96,6 +96,28 @@ describe('BuildingUpgradeCard — training queue section', () => {
     expect(queuedOrders[0].text()).toContain('ready in')
   })
 
+  it('queue panel renders and stays visible on mount when backend clock lags client clock', async () => {
+    // Backend clock lags the client clock by 70s. finishesAt looks "in the past" against
+    // raw Date.now(), but is ~5s in the future relative to serverTime.
+    const now = Date.now()
+    const serverTime = new Date(now - 70000).toISOString()
+    const finishesAt = new Date(now - 70000 + 5000).toISOString()
+    unitsApi.fetchTrainingQueue.mockResolvedValue([makeOrder({ finishesAt, serverTime, queuePosition: 1 })])
+
+    const wrapper = mount(BuildingUpgradeCard, {
+      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 100 } },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
+    expect(parseFloat(wrapper.find('[data-testid="countdown"]').text())).toBeGreaterThan(4)
+
+    // Queue must not disappear on the next countdown tick
+    vi.advanceTimersByTime(100)
+    await nextTick()
+    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
+  })
+
   it('does not render queue section when queue is empty', async () => {
     unitsApi.fetchTrainingQueue.mockResolvedValue([])
 
@@ -194,6 +216,38 @@ describe('BuildingUpgradeCard — train action queue render', () => {
     // Queue must still be visible — stale GET must not erase the countdown
     expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="countdown"]').exists()).toBe(true)
+  })
+
+  it('queue remains visible with a corrected countdown when backend clock lags client clock', async () => {
+    // Backend clock lags the client clock by 70s. finishesAt looks "in the past" against
+    // raw Date.now(), but is ~5s in the future relative to serverTime.
+    const now = Date.now()
+    const serverTime = new Date(now - 70000).toISOString()
+    const finishesAt = new Date(now - 70000 + 5000).toISOString()
+
+    unitsApi.trainUnit.mockResolvedValue([
+      makeOrder({ finishesAt, serverTime, queuePosition: 1 }),
+    ])
+
+    const store = useResourceStore()
+    store.food = 200
+    store.iron = 120
+
+    const wrapper = mount(BuildingUpgradeCard, {
+      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 120 } },
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="train-vandal-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
+    expect(parseFloat(wrapper.find('[data-testid="countdown"]').text())).toBeGreaterThan(4)
+
+    // Queue must not disappear on the next countdown tick
+    vi.advanceTimersByTime(100)
+    await nextTick()
+    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
   })
 
   it('fetches the army roster when the training countdown reaches zero', async () => {

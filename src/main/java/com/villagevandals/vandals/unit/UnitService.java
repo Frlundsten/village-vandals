@@ -139,6 +139,7 @@ public class UnitService {
   }
 
   private List<TrainingOrderDTO> toOrderDTOs(List<TrainingOrder> orders) {
+    Instant serverTime = Instant.now();
     return IntStream.range(0, orders.size())
         .mapToObj(index -> {
           TrainingOrder order = orders.get(index);
@@ -148,7 +149,8 @@ public class UnitService {
               order.getBuildingId(),
               order.getFinishesAt(),
               order.getQuantity(),
-              index + 1);
+              index + 1,
+              serverTime);
         })
         .toList();
   }

@@ -8,4 +8,5 @@ public record TrainingOrderDTO(
     long buildingId,
     Instant finishesAt,
     int quantity,
-    int queuePosition) {}
+    int queuePosition,
+    Instant serverTime) {}
