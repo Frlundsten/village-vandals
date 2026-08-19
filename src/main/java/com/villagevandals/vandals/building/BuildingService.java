@@ -173,6 +173,46 @@ public class BuildingService {
     return building;
   }
 
+
+  /**
+   * Delete a building from the resource system.
+   *
+   * @param villageId
+   * @param constructionSiteId
+   * @param username
+   */
+  @Transactional
+  public void deleteBuilding(long villageId, long constructionSiteId, String username) {
+    ConstructionSite site = getConstructionSite(constructionSiteId, villageId);
+
+    validateOwner(site, username);
+
+    Building building = getBuildingToDelete(site);
+
+    resourcesService.snapshotCurrentResources(villageId);
+
+    if (building instanceof EconomicProduction eco) {
+      resourcesService.updateProductionDelta(eco, villageId, -eco.productionPerHour());
+    }
+
+    // Null the FK (building_id lives on construction_site) and persist before removing the
+    // orphaned building row, otherwise the foreign-key constraint would be violated.
+    site.setBuilding(null);
+    constructionSiteRepository.save(site);
+    buildingRepository.delete(building);
+  }
+
+  /**
+   * Returns the building at the specified site if it exists; otherwise, returns an Optional.empty()
+   *
+   * @param site
+   * @return
+   */
+  private Building getBuildingToDelete(ConstructionSite site) {
+    return Optional.ofNullable(site.getBuilding())
+        .orElseThrow(() -> new IllegalStateException("No building to delete at this site"));
+  }
+
   private ConstructionSite getConstructionSite(long constructionSiteId, long villageId) {
     return constructionSiteRepository
         .findByIdAndVillageId(constructionSiteId, villageId)

@@ -1,9 +1,11 @@
 package com.villagevandals.vandals.building;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -170,6 +172,45 @@ class BuildingControllerTest {
             post("/building/upgrade")
                 .contentType(APPLICATION_JSON)
                 .content("{\"villageId\":1,\"constructionSiteId\":99}")
+                .principal(() -> "user"))
+        .andExpect(status().isBadRequest());
+  }
+
+  /**
+   * Tests to verify the delete building operation.
+   *
+   * @throws Exception Exception thrown when deleting a building.
+   */
+  @Test
+  void deleteBuilding_validRequest_returns200WithMessage() throws Exception {
+    doNothing().when(buildingService).deleteBuilding(eq(1L), eq(2L), eq("user"));
+
+    mvc.perform(
+            delete("/building")
+                .param("villageId", "1")
+                .param("constructionSiteId", "2")
+                .principal(() -> "user"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message.message").value("Demolished building successfully"));
+
+    verify(buildingService).deleteBuilding(1L, 2L, "user");
+  }
+
+  /**
+   * Tests a method that deletes a building and verifies its response status code is 400
+   *
+   * @throws Exception
+   */
+  @Test
+  void deleteBuilding_serviceFailure_returns400() throws Exception {
+    doThrow(new IllegalStateException("No building to delete at this site"))
+        .when(buildingService)
+        .deleteBuilding(anyLong(), anyLong(), any());
+
+    mvc.perform(
+            delete("/building")
+                .param("villageId", "1")
+                .param("constructionSiteId", "99")
                 .principal(() -> "user"))
         .andExpect(status().isBadRequest());
   }

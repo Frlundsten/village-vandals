@@ -11,6 +11,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -72,6 +73,28 @@ public class BuildingController {
     } catch (Exception e) {
       LOG.error("Upgrade failed: {}", e.getMessage());
       return ResponseEntity.badRequest().body("Unable to upgrade building");
+    }
+  }
+
+  /**
+   * Delete a building from the specified site on the specified village and principal.
+   *
+   * @param villageId villageId
+   * @param constructionSiteId constructionSiteId
+   * @param principal principal
+   * @return
+   */
+  @DeleteMapping
+  public ResponseEntity<?> deleteBuilding(
+      @RequestParam Long villageId, @RequestParam Long constructionSiteId, Principal principal) {
+    LOG.debug(
+        "Got a request to demolish building on site {} in village {}", constructionSiteId, villageId);
+    try {
+      buildingService.deleteBuilding(villageId, constructionSiteId, principal.getName());
+      return ResponseEntity.ok(Message.of("Demolished building successfully"));
+    } catch (Exception e) {
+      LOG.error("Demolition failed: {}", e.getMessage());
+      return ResponseEntity.badRequest().body("Unable to demolish building");
     }
   }
 }
