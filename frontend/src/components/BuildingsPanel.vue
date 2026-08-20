@@ -7,19 +7,28 @@ const resourceStore = useResourceStore()
 const buildings = ref([])
 const loading = ref(true)
 const errors = ref({})
+// Distinct from `buildings.length === 0`: a failed fetch must never read as "you own nothing".
+const loadError = ref(null)
 
 const villageId = Number(localStorage.getItem('villageId'))
 
 async function loadBuildings() {
   loading.value = true
+  loadError.value = null
   try {
     buildings.value = await fetchBuildings(villageId)
+  } catch (e) {
+    loadError.value = e.message ?? 'Could not load your buildings'
   } finally {
     loading.value = false
   }
 }
 
-onMounted(loadBuildings)
+onMounted(async () => {
+  // Affordability is evaluated against the resource store, so it has to be current here —
+  // this route is reachable without ever passing through the village map.
+  await Promise.allSettled([loadBuildings(), resourceStore.refresh(villageId)])
+})
 
 function canAfford(building) {
   if (building.type === 'BARRACK') return false
@@ -46,6 +55,10 @@ async function handleUpgrade(building) {
     <h2 class="text-2xl font-bold mb-6">Buildings</h2>
 
     <div v-if="loading" class="text-base-content/60">Loading...</div>
+
+    <div v-else-if="loadError" class="alert alert-error" data-testid="buildings-error">
+      <span>{{ loadError }}</span>
+    </div>
 
     <div v-else-if="buildings.length === 0" class="text-base-content/60 italic">
       No buildings yet — construct something from your village map.
@@ -95,10 +108,7 @@ async function handleUpgrade(building) {
                 >
                   ⬆ Upgrade
                 </button>
-                <span
-                  v-if="errors[building.constructionSiteId]"
-                  class="text-xs text-error"
-                >
+                <span v-if="errors[building.constructionSiteId]" class="text-xs text-error">
                   {{ errors[building.constructionSiteId] }}
                 </span>
               </div>

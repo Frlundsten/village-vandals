@@ -42,6 +42,16 @@ describe('ArmyView', () => {
     expect(wrapper.text()).toContain('Barrack')
   })
 
+  it('shows an error rather than the empty state when the roster fetch fails', async () => {
+    unitsApi.fetchRoster.mockRejectedValue(new Error('Your session has expired'))
+
+    const wrapper = mount(ArmyView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Your session has expired')
+    expect(wrapper.text()).not.toContain('No units yet')
+  })
+
   it('renders one card per unit type', async () => {
     unitsApi.fetchRoster.mockResolvedValue([
       { unitType: 'VANDAL', count: 3, hp: 4, damage: 1 },

@@ -38,15 +38,27 @@ describe('useArmyStore', () => {
     expect(store.roster).toEqual([])
   })
 
-  it('refresh error leaves roster unchanged', async () => {
+  it('refresh rejects on failure so callers can show an error', async () => {
     const initial = [{ unitType: 'VANDAL', count: 2, hp: 4, damage: 1 }]
     fetchRoster.mockResolvedValueOnce(initial)
     const store = useArmyStore()
     await store.refresh(1)
 
     fetchRoster.mockRejectedValueOnce(new Error('network'))
+
+    // Swallowing here made ArmyView's error branch unreachable — a failed fetch
+    // was shown to the player as "No units yet".
+    await expect(store.refresh(1)).rejects.toThrow('network')
+    expect(store.roster).toEqual(initial)
+  })
+
+  it('reset empties the roster', async () => {
+    fetchRoster.mockResolvedValueOnce([{ unitType: 'VANDAL', count: 2, hp: 4, damage: 1 }])
+    const store = useArmyStore()
     await store.refresh(1)
 
-    expect(store.roster).toEqual(initial)
+    store.reset()
+
+    expect(store.roster).toEqual([])
   })
 })

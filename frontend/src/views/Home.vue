@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar.vue'
 import { useSessionStore } from '@/stores/pinia.js'
 import { useResourceStore } from '@/stores/resources.js'
 import { useArmyStore } from '@/stores/army.js'
+import { useTrainingStore } from '@/stores/training.js'
 import { storeToRefs } from 'pinia'
 import { apiRequest } from '@/util/api/api.js'
 
@@ -15,6 +16,7 @@ const router = useRouter()
 const route = useRoute()
 
 const armyStore = useArmyStore()
+const trainingStore = useTrainingStore()
 
 async function handleLogout() {
   const keycloakIdToken = localStorage.getItem('keycloak_id_token')
@@ -25,6 +27,11 @@ async function handleLogout() {
     // Proceed with local logout even if backend call fails
   }
 
+  // Every per-account store has to be torn down, or the previous player's units and
+  // resource totals are still on screen for the first frames of the next session.
+  trainingStore.stop()
+  armyStore.reset()
+  resourceStore.reset()
   session.clearSession()
 
   if (keycloakIdToken) {
@@ -43,7 +50,8 @@ const player = ref({
   name: '',
 })
 
-const currentVillage = ref({ id: 0, name: '' })
+// VillageDTO carries no name, so the village is identified by its map coordinates.
+const currentVillage = ref({ id: 0, x: null, y: null })
 
 const resourceStore = useResourceStore()
 const { food, wood, bricks, iron, foodPerHour, woodPerHour, bricksPerHour, ironPerHour } =
@@ -73,11 +81,25 @@ async function loadUserData() {
     const village = userData.villages?.[0]
     if (!village) return
 
-    currentVillage.value.id = village.id
+    player.value = { name: userData.username ?? '' }
+    currentVillage.value = {
+      id: village.id,
+      x: village.xCoordinate ?? null,
+      y: village.yCoordinate ?? null,
+    }
     localStorage.setItem('villageId', village.id)
 
-    await resourceStore.refresh(village.id)
-    await armyStore.refresh(village.id)
+    // Independent loads: one failing must not blank the header or skip the others.
+    // Hydrating the training store here rather than in the village view keeps the countdown
+    // alive for the whole session, since Home stays mounted across route changes.
+    const results = await Promise.allSettled([
+      resourceStore.refresh(village.id),
+      armyStore.refresh(village.id),
+      trainingStore.hydrate(village.id),
+    ])
+    for (const result of results) {
+      if (result.status === 'rejected') console.error('Village data load failed:', result.reason)
+    }
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     clearUserData()
@@ -86,19 +108,24 @@ async function loadUserData() {
 
 function clearUserData() {
   player.value = { name: '' }
-  currentVillage.value = { id: 0, name: '' }
+  currentVillage.value = { id: 0, x: null, y: null }
 }
 
-const showArmyPanel = computed(
-  () => armyStore.roster.length > 0 && route.path !== '/army',
-)
+const showArmyPanel = computed(() => armyStore.roster.length > 0 && route.path !== '/army')
 
+// `||` not `??`: the initial id is 0, and `??` only falls through on null/undefined, so the
+// stored fallback never fired and the player could navigate to /village/0.
 const safeVillageId = computed(() => {
-  return currentVillage.value?.id ?? Number(localStorage.getItem('villageId'))
+  return currentVillage.value?.id || Number(localStorage.getItem('villageId')) || 0
 })
 
 async function updateResourceUI() {
-  await resourceStore.refresh(safeVillageId.value)
+  if (!safeVillageId.value) return
+  try {
+    await resourceStore.refresh(safeVillageId.value)
+  } catch (error) {
+    console.error('Failed to refresh resources:', error)
+  }
 }
 </script>
 
@@ -114,7 +141,12 @@ async function updateResourceUI() {
             {{ player.name }}
           </span>
           <span class="text-sm opacity-80"
-            >🏰 <span class="text-secondary">{{ currentVillage.name }}</span></span
+            >🏰
+            <span class="text-secondary">
+              <template v-if="currentVillage.x !== null"
+                >({{ currentVillage.x }}|{{ currentVillage.y }})</template
+              >
+            </span></span
           >
         </div>
       </div>
@@ -181,10 +213,17 @@ async function updateResourceUI() {
           <li>
             <RouterLink to="/map">🗺️ World Map</RouterLink>
           </li>
-          <li><a @click="goTo('reports')">📜 Reports</a></li>
-          <li><a @click="goTo('messages')">✉️ Messages</a></li>
+          <!-- Not implemented yet. Rendered inert rather than wired to a handler that
+               does not exist — clicking these used to throw. -->
+          <li class="menu-disabled" title="Coming soon"><a>📜 Reports</a></li>
+          <li class="menu-disabled" title="Coming soon"><a>✉️ Messages</a></li>
         </ul>
-        <button v-if="isAuthenticated" @click="handleLogout" class="btn btn-md w-full mt-4">
+        <button
+          v-if="isAuthenticated"
+          data-testid="logout-button"
+          @click="handleLogout"
+          class="btn btn-md w-full mt-4"
+        >
           Logout
         </button>
 
