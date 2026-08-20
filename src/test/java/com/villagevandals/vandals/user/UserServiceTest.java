@@ -2,6 +2,7 @@ package com.villagevandals.vandals.user;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.villagevandals.vandals.constructionsite.ConstructionSiteRepository;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.transaction.annotation.Transactional;
 
 class UserServiceTest {
 
@@ -39,5 +41,24 @@ class UserServiceTest {
     // No PasswordEncoder exists — if this compiles and runs, the requirement is met.
     // Verify the user was saved (not just no-oped).
     org.mockito.Mockito.verify(userRepository).save(any(User.class));
+  }
+
+  /**
+   * {@code VillageService.starterVillage} is itself {@code @Transactional} and marks a world tile
+   * occupied. If {@code newUser} is not transactional that inner transaction commits on its own, so
+   * a later failure (duplicate username race, constraint violation) leaves the tile claimed forever
+   * with no village on it. Both must commit or roll back together.
+   */
+  @Test
+  void newUser_declaresAWriteTransactionSoAClaimedTileRollsBack() throws Exception {
+    Transactional tx =
+        UserService.class
+            .getMethod("newUser", String.class, String.class, String.class)
+            .getAnnotation(Transactional.class);
+
+    assertThat(tx)
+        .as("tile claim and user/village insert must share one unit of work")
+        .isNotNull();
+    assertThat(tx.readOnly()).isFalse();
   }
 }

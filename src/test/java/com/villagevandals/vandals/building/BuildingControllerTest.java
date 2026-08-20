@@ -2,6 +2,7 @@ package com.villagevandals.vandals.building;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -15,16 +16,21 @@ import com.villagevandals.vandals.building.buildings.Farm;
 import com.villagevandals.vandals.building.buildings.LumberMill;
 import com.villagevandals.vandals.building.dto.ConstructionRequestDTO;
 import com.villagevandals.vandals.building.dto.UpgradeRequestDTO;
+import com.villagevandals.vandals.web.GlobalExceptionHandler;
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class BuildingControllerTest {
+
+  private static final Principal USER = () -> "user";
 
   MockMvc mvc;
 
@@ -33,16 +39,20 @@ class BuildingControllerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    mvc = MockMvcBuilders.standaloneSetup(new BuildingController(buildingService)).build();
+    mvc =
+        MockMvcBuilders.standaloneSetup(new BuildingController(buildingService))
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
   }
 
   @Test
   void createBuilding_validRequest_returns200() throws Exception {
-    doNothing().when(buildingService).constructBuilding(any(ConstructionRequestDTO.class));
+    doNothing().when(buildingService).constructBuilding(any(ConstructionRequestDTO.class), eq("user"));
 
     mvc.perform(
             post("/building")
                 .contentType(APPLICATION_JSON)
+                .principal(USER)
                 .content("{\"type\":\"LUMBERMILL\",\"constructionSiteId\":1,\"villageId\":1}"))
         .andExpect(status().isOk())
         .andExpect(
@@ -50,14 +60,41 @@ class BuildingControllerTest {
   }
 
   @Test
-  void createBuilding_siteAlreadyOccupied_returns400() throws Exception {
-    doThrow(new IllegalArgumentException("A building already exists on this site"))
+  void createBuilding_passesAuthenticatedUsernameToTheService() throws Exception {
+    mvc.perform(
+            post("/building")
+                .contentType(APPLICATION_JSON)
+                .principal(USER)
+                .content("{\"type\":\"LUMBERMILL\",\"constructionSiteId\":1,\"villageId\":1}"))
+        .andExpect(status().isOk());
+
+    verify(buildingService).constructBuilding(any(ConstructionRequestDTO.class), eq("user"));
+  }
+
+  @Test
+  void createBuilding_notTheOwner_returns403AndBuildsNothing() throws Exception {
+    doThrow(new AccessDeniedException("Not the owner of village 1"))
         .when(buildingService)
-        .constructBuilding(any(ConstructionRequestDTO.class));
+        .constructBuilding(any(ConstructionRequestDTO.class), anyString());
 
     mvc.perform(
             post("/building")
                 .contentType(APPLICATION_JSON)
+                .principal(USER)
+                .content("{\"type\":\"LUMBERMILL\",\"constructionSiteId\":1,\"villageId\":1}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void createBuilding_siteAlreadyOccupied_returns400() throws Exception {
+    doThrow(new IllegalArgumentException("A building already exists on this site"))
+        .when(buildingService)
+        .constructBuilding(any(ConstructionRequestDTO.class), anyString());
+
+    mvc.perform(
+            post("/building")
+                .contentType(APPLICATION_JSON)
+                .principal(USER)
                 .content("{\"type\":\"LUMBERMILL\",\"constructionSiteId\":1,\"villageId\":1}"))
         .andExpect(status().isBadRequest());
   }
@@ -66,27 +103,29 @@ class BuildingControllerTest {
   void createBuilding_villageNotFound_returns400() throws Exception {
     doThrow(new IllegalArgumentException("Village Not Found"))
         .when(buildingService)
-        .constructBuilding(any(ConstructionRequestDTO.class));
+        .constructBuilding(any(ConstructionRequestDTO.class), anyString());
 
     mvc.perform(
             post("/building")
                 .contentType(APPLICATION_JSON)
+                .principal(USER)
                 .content("{\"type\":\"LUMBERMILL\",\"constructionSiteId\":1,\"villageId\":999}"))
         .andExpect(status().isBadRequest());
   }
 
   @Test
-  void createBuilding_insufficientResources_returns400WithMessage() throws Exception {
+  void createBuilding_insufficientResources_returns400WithTheActualReason() throws Exception {
     doThrow(new IllegalArgumentException("Insufficient wood: need 60, have 10"))
         .when(buildingService)
-        .constructBuilding(any(ConstructionRequestDTO.class));
+        .constructBuilding(any(ConstructionRequestDTO.class), anyString());
 
     mvc.perform(
             post("/building")
                 .contentType(APPLICATION_JSON)
+                .principal(USER)
                 .content("{\"type\":\"FARM\",\"constructionSiteId\":1,\"villageId\":1}"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$").value("Unable to construct building"));
+        .andExpect(jsonPath("$.message.message").value("Insufficient wood: need 60, have 10"));
   }
 
   @Test
@@ -94,7 +133,7 @@ class BuildingControllerTest {
     when(buildingService.getAvailableBuildings(eq(1L), any()))
         .thenReturn(List.of(new LumberMill(), new Farm()));
 
-    mvc.perform(get("/building/available").param("villageId", "1").principal(() -> "user"))
+    mvc.perform(get("/building/available").param("villageId", "1").principal(USER))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2));
   }
@@ -103,7 +142,7 @@ class BuildingControllerTest {
   void getAvailableBuildings_farmHasCorrectConstructionCost() throws Exception {
     when(buildingService.getAvailableBuildings(eq(1L), any())).thenReturn(List.of(new Farm()));
 
-    mvc.perform(get("/building/available").param("villageId", "1").principal(() -> "user"))
+    mvc.perform(get("/building/available").param("villageId", "1").principal(USER))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].constructionCost.wood").value(60))
         .andExpect(jsonPath("$[0].constructionCost.food").value(40))
@@ -114,7 +153,7 @@ class BuildingControllerTest {
   void getAvailableBuildings_lumberMillHasCorrectConstructionCost() throws Exception {
     when(buildingService.getAvailableBuildings(eq(1L), any())).thenReturn(List.of(new LumberMill()));
 
-    mvc.perform(get("/building/available").param("villageId", "1").principal(() -> "user"))
+    mvc.perform(get("/building/available").param("villageId", "1").principal(USER))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].constructionCost.food").value(50))
         .andExpect(jsonPath("$[0].constructionCost.bricks").value(60))
@@ -126,9 +165,18 @@ class BuildingControllerTest {
     when(buildingService.getAllBuildingsByVillageId(eq(1L), eq("user")))
         .thenReturn(Map.of(1L, new LumberMill(), 2L, new Farm()));
 
-    mvc.perform(get("/building").param("villageId", "1").principal(() -> "user"))
+    mvc.perform(get("/building").param("villageId", "1").principal(USER))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2));
+  }
+
+  @Test
+  void getExistingBuildings_notTheOwner_returns403() throws Exception {
+    when(buildingService.getAllBuildingsByVillageId(eq(1L), eq("user")))
+        .thenThrow(new AccessDeniedException("Not the owner of village 1"));
+
+    mvc.perform(get("/building").param("villageId", "1").principal(USER))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -141,7 +189,7 @@ class BuildingControllerTest {
             post("/building/upgrade")
                 .contentType(APPLICATION_JSON)
                 .content("{\"villageId\":1,\"constructionSiteId\":2}")
-                .principal(() -> "user"))
+                .principal(USER))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.type").value("FARM"))
         .andExpect(jsonPath("$.level").value(2))
@@ -158,12 +206,27 @@ class BuildingControllerTest {
             post("/building/upgrade")
                 .contentType(APPLICATION_JSON)
                 .content("{\"villageId\":1,\"constructionSiteId\":2}")
-                .principal(() -> "user"))
+                .principal(USER))
         .andExpect(status().isBadRequest());
   }
 
   @Test
-  void upgradeBuilding_noBuilding_returns400() throws Exception {
+  void upgradeBuilding_notTheOwner_returns403() throws Exception {
+    doThrow(new AccessDeniedException("Not the owner of village 1"))
+        .when(buildingService)
+        .upgradeBuilding(any(UpgradeRequestDTO.class), any());
+
+    mvc.perform(
+            post("/building/upgrade")
+                .contentType(APPLICATION_JSON)
+                .content("{\"villageId\":1,\"constructionSiteId\":2}")
+                .principal(USER))
+        .andExpect(status().isForbidden());
+  }
+
+  /** "No building at this site" is a conflict with current state, not a malformed request. */
+  @Test
+  void upgradeBuilding_noBuilding_returns409() throws Exception {
     doThrow(new IllegalStateException("No building to upgrade at this site"))
         .when(buildingService)
         .upgradeBuilding(any(UpgradeRequestDTO.class), any());
@@ -172,15 +235,10 @@ class BuildingControllerTest {
             post("/building/upgrade")
                 .contentType(APPLICATION_JSON)
                 .content("{\"villageId\":1,\"constructionSiteId\":99}")
-                .principal(() -> "user"))
-        .andExpect(status().isBadRequest());
+                .principal(USER))
+        .andExpect(status().isConflict());
   }
 
-  /**
-   * Tests to verify the delete building operation.
-   *
-   * @throws Exception Exception thrown when deleting a building.
-   */
   @Test
   void deleteBuilding_validRequest_returns200WithMessage() throws Exception {
     doNothing().when(buildingService).deleteBuilding(eq(1L), eq(2L), eq("user"));
@@ -189,20 +247,15 @@ class BuildingControllerTest {
             delete("/building")
                 .param("villageId", "1")
                 .param("constructionSiteId", "2")
-                .principal(() -> "user"))
+                .principal(USER))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message.message").value("Demolished building successfully"));
 
     verify(buildingService).deleteBuilding(1L, 2L, "user");
   }
 
-  /**
-   * Tests a method that deletes a building and verifies its response status code is 400
-   *
-   * @throws Exception
-   */
   @Test
-  void deleteBuilding_serviceFailure_returns400() throws Exception {
+  void deleteBuilding_noBuildingAtSite_returns409() throws Exception {
     doThrow(new IllegalStateException("No building to delete at this site"))
         .when(buildingService)
         .deleteBuilding(anyLong(), anyLong(), any());
@@ -211,7 +264,21 @@ class BuildingControllerTest {
             delete("/building")
                 .param("villageId", "1")
                 .param("constructionSiteId", "99")
-                .principal(() -> "user"))
-        .andExpect(status().isBadRequest());
+                .principal(USER))
+        .andExpect(status().isConflict());
+  }
+
+  @Test
+  void deleteBuilding_notTheOwner_returns403() throws Exception {
+    doThrow(new AccessDeniedException("Not the owner of village 1"))
+        .when(buildingService)
+        .deleteBuilding(anyLong(), anyLong(), any());
+
+    mvc.perform(
+            delete("/building")
+                .param("villageId", "1")
+                .param("constructionSiteId", "2")
+                .principal(USER))
+        .andExpect(status().isForbidden());
   }
 }

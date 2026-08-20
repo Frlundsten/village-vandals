@@ -12,4 +12,10 @@ public interface ConstructionSiteRepository extends JpaRepository<ConstructionSi
     @Query("SELECT cs FROM ConstructionSite cs " +
             "WHERE cs.villageSiteId = :id AND cs.village.id = :villageId")
  Optional<ConstructionSite> findByIdAndVillageId(Long id, Long villageId);
+
+    /**
+     * Resolves a building through the sites of a specific village, so a building id belonging to
+     * another player's village cannot be used.
+     */
+ Optional<ConstructionSite> findByVillage_IdAndBuilding_Id(Long villageId, Long buildingId);
 }

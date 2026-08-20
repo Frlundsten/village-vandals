@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.transaction.annotation.Transactional;
 
 class RefreshTokenServiceTest {
 
@@ -59,6 +60,29 @@ class RefreshTokenServiceTest {
     when(repository.findByToken("missing")).thenReturn(Optional.empty());
 
     assertThrows(IllegalArgumentException.class, () -> service.validateRefreshToken("missing"));
+  }
+
+  /**
+   * {@code deleteByUsername} is a Spring Data <em>derived delete query</em>: it selects the matching
+   * rows and calls {@code EntityManager.remove} on each, which requires an active transaction.
+   * Nothing in the logout path (controller -> service, with open-in-view supplying only an
+   * EntityManager) opens one, so without this annotation the delete fails and refresh tokens
+   * survive logout entirely.
+   *
+   * <p>This asserts the transactional boundary rather than the runtime failure: the project has no
+   * database test harness, and a mocked repository cannot reproduce the missing transaction.
+   */
+  @Test
+  void revokeByUsername_declaresAWriteTransaction() throws Exception {
+    Transactional tx =
+        RefreshTokenService.class
+            .getMethod("revokeByUsername", String.class)
+            .getAnnotation(Transactional.class);
+
+    assertThat(tx)
+        .as("derived delete queries require an active transaction")
+        .isNotNull();
+    assertThat(tx.readOnly()).as("deleting is not a read-only operation").isFalse();
   }
 
   @Test

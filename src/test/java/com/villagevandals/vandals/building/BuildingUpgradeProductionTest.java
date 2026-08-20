@@ -15,6 +15,7 @@ import com.villagevandals.vandals.resource.Resource;
 import com.villagevandals.vandals.resource.ResourcesService;
 import com.villagevandals.vandals.user.User;
 import com.villagevandals.vandals.village.Village;
+import com.villagevandals.vandals.village.VillageOwnershipService;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ class BuildingUpgradeProductionTest {
     @Mock VillageRepository villageRepository;
     @Mock ConstructionSiteRepository constructionSiteRepository;
     @Mock BuildingRepository buildingRepository;
+    @Mock VillageOwnershipService villageOwnershipService;
 
     BuildingService service;
 
@@ -38,7 +40,13 @@ class BuildingUpgradeProductionTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         ResourcesService resourcesService = new ResourcesService(villageRepository);
-        service = new BuildingService(resourcesService, villageRepository, constructionSiteRepository, buildingRepository);
+        service =
+            new BuildingService(
+                resourcesService,
+                villageRepository,
+                constructionSiteRepository,
+                buildingRepository,
+                villageOwnershipService);
     }
 
     @Test
@@ -46,7 +54,7 @@ class BuildingUpgradeProductionTest {
         Farm farm = new Farm();
 
         User owner = mock(User.class);
-        when(owner.getUsername()).thenReturn(USERNAME);
+        lenient().when(owner.getUsername()).thenReturn(USERNAME);
         Village village = villageWithResources(owner);
 
         ConstructionSite site = siteWith(farm, village);
@@ -68,7 +76,7 @@ class BuildingUpgradeProductionTest {
     void upgradeBuilding_farm_doesNotChangeOtherResources() {
         Farm farm = new Farm();
         User owner = mock(User.class);
-        when(owner.getUsername()).thenReturn(USERNAME);
+        lenient().when(owner.getUsername()).thenReturn(USERNAME);
         Village village = villageWithResources(owner);
 
         ConstructionSite site = siteWith(farm, village);
@@ -92,7 +100,7 @@ class BuildingUpgradeProductionTest {
     void upgradeBuilding_farm_stacksAcrossMultipleUpgrades() {
         Farm farm = new Farm();
         User owner = mock(User.class);
-        when(owner.getUsername()).thenReturn(USERNAME);
+        lenient().when(owner.getUsername()).thenReturn(USERNAME);
         Village village = villageWithResources(owner);
 
         ConstructionSite site = siteWith(farm, village);
@@ -114,7 +122,7 @@ class BuildingUpgradeProductionTest {
     void upgradeBuilding_barrack_doesNotChangeAnyProductionRate() {
         Barrack barrack = new Barrack();
         User owner = mock(User.class);
-        when(owner.getUsername()).thenReturn(USERNAME);
+        lenient().when(owner.getUsername()).thenReturn(USERNAME);
         Village village = villageWithResources(owner);
 
         ConstructionSite site = siteWith(barrack, village);
@@ -148,7 +156,7 @@ class BuildingUpgradeProductionTest {
     private ConstructionSite siteWith(com.villagevandals.vandals.building.buildings.Building building, Village village) {
         ConstructionSite site = mock(ConstructionSite.class);
         when(site.getBuilding()).thenReturn(building);
-        when(site.getVillage()).thenReturn(village);
+        lenient().when(site.getVillage()).thenReturn(village);
         return site;
     }
 }

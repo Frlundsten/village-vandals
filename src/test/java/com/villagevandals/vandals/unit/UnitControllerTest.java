@@ -1,5 +1,7 @@
 package com.villagevandals.vandals.unit;
 
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -7,16 +9,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.villagevandals.vandals.web.GlobalExceptionHandler;
+import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class UnitControllerTest {
+
+  private static final Principal ALICE = () -> "alice";
 
   MockMvc mvc;
 
@@ -25,7 +32,10 @@ class UnitControllerTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    mvc = MockMvcBuilders.standaloneSetup(new UnitController(unitService)).build();
+    mvc =
+        MockMvcBuilders.standaloneSetup(new UnitController(unitService))
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
   }
 
   @Test
@@ -33,11 +43,11 @@ class UnitControllerTest {
     Instant t1 = Instant.parse("2099-01-01T00:00:05Z");
     Instant t2 = Instant.parse("2099-01-01T00:00:10Z");
     Instant serverTime = Instant.now();
-    when(unitService.getTrainingQueue(42L)).thenReturn(List.of(
+    when(unitService.getTrainingQueue(42L, "alice")).thenReturn(List.of(
         new TrainingOrderDTO(1L, "VANDAL", 10L, t1, 1, 1, serverTime),
         new TrainingOrderDTO(2L, "VANDAL", 10L, t2, 1, 2, serverTime)));
 
-    mvc.perform(get("/unit/training").param("villageId", "42"))
+    mvc.perform(get("/unit/training").param("villageId", "42").principal(ALICE))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].queuePosition").value(1))
@@ -47,20 +57,29 @@ class UnitControllerTest {
 
   @Test
   void getTrainingQueue_emptyQueue_returnsEmptyList() throws Exception {
-    when(unitService.getTrainingQueue(42L)).thenReturn(List.of());
+    when(unitService.getTrainingQueue(42L, "alice")).thenReturn(List.of());
 
-    mvc.perform(get("/unit/training").param("villageId", "42"))
+    mvc.perform(get("/unit/training").param("villageId", "42").principal(ALICE))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(0));
   }
 
   @Test
+  void getTrainingQueue_notTheOwner_returnsForbidden() throws Exception {
+    when(unitService.getTrainingQueue(42L, "alice"))
+        .thenThrow(new AccessDeniedException("Not the owner of village 42"));
+
+    mvc.perform(get("/unit/training").param("villageId", "42").principal(ALICE))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void trainUnit_validRequest_returnsQueueWithNewOrder() throws Exception {
     Instant finish = Instant.parse("2099-01-01T00:00:05Z");
-    when(unitService.trainVandal(1L, 10L, 1)).thenReturn(
+    when(unitService.trainVandal(1L, 10L, 1, "alice")).thenReturn(
         List.of(new TrainingOrderDTO(1L, "VANDAL", 10L, finish, 1, 1, Instant.now())));
 
-    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON)
+    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON).principal(ALICE)
             .content("{\"villageId\":1,\"buildingId\":10,\"quantity\":1}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
@@ -73,10 +92,10 @@ class UnitControllerTest {
   @Test
   void trainUnit_batchRequest_passesQuantityThroughAndReturnsBatchOrder() throws Exception {
     Instant finish = Instant.parse("2099-01-01T00:01:05Z");
-    when(unitService.trainVandal(1L, 10L, 5)).thenReturn(
+    when(unitService.trainVandal(1L, 10L, 5, "alice")).thenReturn(
         List.of(new TrainingOrderDTO(1L, "VANDAL", 10L, finish, 5, 1, Instant.now())));
 
-    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON)
+    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON).principal(ALICE)
             .content("{\"villageId\":1,\"buildingId\":10,\"quantity\":5}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
@@ -86,23 +105,48 @@ class UnitControllerTest {
 
   @Test
   void trainUnit_invalidBuilding_returnsBadRequest() throws Exception {
-    when(unitService.trainVandal(1L, 99L, 1))
+    when(unitService.trainVandal(1L, 99L, 1, "alice"))
         .thenThrow(new IllegalArgumentException("Building 99 is not a Barrack"));
 
-    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON)
+    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON).principal(ALICE)
             .content("{\"villageId\":1,\"buildingId\":99,\"quantity\":1}"))
         .andExpect(status().isBadRequest());
   }
 
   @Test
+  void trainUnit_notTheOwner_returnsForbiddenAndNeverTrains() throws Exception {
+    when(unitService.trainVandal(1L, 10L, 1, "alice"))
+        .thenThrow(new AccessDeniedException("Not the owner of village 1"));
+
+    mvc.perform(post("/unit/train").contentType(APPLICATION_JSON).principal(ALICE)
+            .content("{\"villageId\":1,\"buildingId\":10,\"quantity\":1}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void getRoster_returnsGroupedEntries() throws Exception {
-    when(unitService.getRoster(42L)).thenReturn(
+    when(unitService.getRoster(42L, "alice")).thenReturn(
         List.of(new UnitRosterDTO("VANDAL", 3L, 4, 1)));
 
-    mvc.perform(get("/unit").param("villageId", "42"))
+    mvc.perform(get("/unit").param("villageId", "42").principal(ALICE))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].unitType").value("VANDAL"))
         .andExpect(jsonPath("$[0].count").value(3));
+  }
+
+  @Test
+  void getRoster_notTheOwner_returnsForbidden() throws Exception {
+    when(unitService.getRoster(42L, "alice"))
+        .thenThrow(new AccessDeniedException("Not the owner of village 42"));
+
+    mvc.perform(get("/unit").param("villageId", "42").principal(ALICE))
+        .andExpect(status().isForbidden());
+
+    verify(unitService, never()).trainVandal(
+        org.mockito.ArgumentMatchers.anyLong(),
+        org.mockito.ArgumentMatchers.anyLong(),
+        org.mockito.ArgumentMatchers.anyInt(),
+        org.mockito.ArgumentMatchers.anyString());
   }
 }

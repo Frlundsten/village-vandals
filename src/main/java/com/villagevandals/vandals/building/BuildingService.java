@@ -4,7 +4,6 @@ import com.villagevandals.vandals.building.buildings.AbstractEconomicBuilding;
 import com.villagevandals.vandals.building.buildings.Barrack;
 import com.villagevandals.vandals.building.buildings.Brickyard;
 import com.villagevandals.vandals.building.buildings.Building;
-import com.villagevandals.vandals.building.buildings.EconomicBuilding;
 import com.villagevandals.vandals.building.buildings.EconomicProduction;
 import com.villagevandals.vandals.building.buildings.Farm;
 import com.villagevandals.vandals.building.buildings.Forge;
@@ -14,8 +13,8 @@ import com.villagevandals.vandals.building.dto.UpgradeRequestDTO;
 import com.villagevandals.vandals.constructionsite.ConstructionSite;
 import com.villagevandals.vandals.constructionsite.ConstructionSiteRepository;
 import com.villagevandals.vandals.resource.ResourcesService;
-import com.villagevandals.vandals.user.User;
 import com.villagevandals.vandals.village.Village;
+import com.villagevandals.vandals.village.VillageOwnershipService;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.util.List;
 import java.util.Map;
@@ -36,28 +35,34 @@ public class BuildingService {
   ConstructionSiteRepository constructionSiteRepository;
   BuildingRepository buildingRepository;
   ResourcesService resourcesService;
+  VillageOwnershipService villageOwnershipService;
 
   public BuildingService(
       ResourcesService resourcesService,
       VillageRepository villageRepository,
       ConstructionSiteRepository constructionSiteRepository,
-      BuildingRepository buildingRepository) {
+      BuildingRepository buildingRepository,
+      VillageOwnershipService villageOwnershipService) {
     this.resourcesService = resourcesService;
     this.buildingRepository = buildingRepository;
     this.villageRepository = villageRepository;
     this.constructionSiteRepository = constructionSiteRepository;
+    this.villageOwnershipService = villageOwnershipService;
   }
 
   /**
-   * Constructs a building on an empty construction site.
+   * Constructs a building on an empty construction site owned by {@code username}.
    * Snapshots current resources, validates the site is unoccupied, deducts the construction cost,
    * persists the building, and updates village production if the building is economic.
    *
+   * @throws org.springframework.security.access.AccessDeniedException if {@code username} does not
+   *     own the village
    * @throws IllegalArgumentException if the village or site is not found, the site is already
    *     occupied, or resources are insufficient
    */
   @Transactional
-  public void constructBuilding(ConstructionRequestDTO dto) {
+  public void constructBuilding(ConstructionRequestDTO dto, String username) {
+    villageOwnershipService.requireOwner(dto.villageId(), username);
 
     Village village = getVillageFromDto(dto);
 
@@ -83,19 +88,13 @@ public class BuildingService {
       case "BARRACK" -> new Barrack();
       case "BRICKYARD" -> new Brickyard();
       case "FORGE" -> new Forge();
-      default -> throw new IllegalStateException("Unexpected value: " + type);
+      default -> throw new IllegalArgumentException("Unknown building type: " + type);
     };
   }
 
   private ConstructionSite getUnpopulatedSite(long constructionSiteId, long villageId) {
     LOG.debug("Get unpopulated site for construction site with id {}", constructionSiteId);
-    ConstructionSite site =
-        constructionSiteRepository
-            .findByIdAndVillageId(constructionSiteId, villageId)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Something went wrong when fetching unpopulated site"));
+    ConstructionSite site = getConstructionSite(constructionSiteId, villageId);
 
     if (site.getBuilding() != null) {
       throw new IllegalArgumentException("A building already exists on this site");
@@ -109,37 +108,31 @@ public class BuildingService {
   }
 
   /**
-   * Returns all constructed buildings for the village keyed by construction site ID.
-   * Empty sites are excluded. Validates that {@code username} owns the village.
-   * Returns an empty map if the village has no buildings yet.
+   * Returns all constructed buildings for the village keyed by construction site ID, or an empty
+   * map if nothing has been built yet. Empty sites are excluded.
+   *
+   * <p>Ownership is checked against the village itself, before and independently of whether it has
+   * any buildings — inferring it from the first site found would leave an empty village readable by
+   * anyone.
+   *
+   * @throws org.springframework.security.access.AccessDeniedException if {@code username} does not
+   *     own the village
    */
+  @Transactional(readOnly = true)
   public Map<Long, Building> getAllBuildingsByVillageId(Long villageId, String username) {
-    try {
-      List<ConstructionSite> siteInVillageId =
-          constructionSiteRepository.findByVillageId(villageId).stream()
-              .filter(Objects::nonNull)
-              .filter(site -> site.getBuilding() != null)
-              .toList();
+    villageOwnershipService.requireOwner(villageId, username);
 
-
-      if (siteInVillageId.isEmpty()) {
-        LOG.error("No buildings found for village {}", villageId);
-        return Map.of();
-      }
-
-      validateOwner(siteInVillageId.getFirst(), username);
-      return siteInVillageId.stream()
-          .collect(Collectors.toMap(ConstructionSite::getVillageSiteId, ConstructionSite::getBuilding));
-
-    } catch (Exception e) {
-      LOG.error("Something went wrong: {}", e.getMessage());
-      throw new RuntimeException(e);
-    }
+    return constructionSiteRepository.findByVillageId(villageId).stream()
+        .filter(Objects::nonNull)
+        .filter(site -> site.getBuilding() != null)
+        .collect(
+            Collectors.toMap(ConstructionSite::getVillageSiteId, ConstructionSite::getBuilding));
   }
 
   /**
    * Returns the full catalogue of building types that can be constructed.
-   * The list is static for now — village state and tech level are not yet considered.
+   * The list is static for now — village state and tech level are not yet considered, and it
+   * contains no village-specific data, so it needs no ownership check.
    */
   public List<Building> getAvailableBuildings(long villageId, String userName) {
     return List.of(new LumberMill(), new Farm(), new Barrack(), new Brickyard(), new Forge());
@@ -149,14 +142,16 @@ public class BuildingService {
    * Upgrades the building at the given construction site and updates the village's production
    * rate by the incremental delta. Only the authenticated owner may upgrade buildings.
    *
-   * @throws IllegalArgumentException if the site is not found or {@code username} is not the owner
+   * @throws org.springframework.security.access.AccessDeniedException if {@code username} does not
+   *     own the village
+   * @throws IllegalArgumentException if the site is not found
    * @throws IllegalStateException if there is no building at the site
    */
   @Transactional
   public Building upgradeBuilding(UpgradeRequestDTO dto, String username) {
-    ConstructionSite site = getConstructionSite(dto.constructionSiteId(), dto.villageId());
+    villageOwnershipService.requireOwner(dto.villageId(), username);
 
-    validateOwner(site, username);
+    ConstructionSite site = getConstructionSite(dto.constructionSiteId(), dto.villageId());
 
     Building building = getBuildingToUpgrade(site);
 
@@ -173,19 +168,20 @@ public class BuildingService {
     return building;
   }
 
-
   /**
-   * Delete a building from the resource system.
+   * Demolishes the building at the given site, freeing it for reuse and reversing any production
+   * the building contributed.
    *
-   * @param villageId
-   * @param constructionSiteId
-   * @param username
+   * @throws org.springframework.security.access.AccessDeniedException if {@code username} does not
+   *     own the village
+   * @throws IllegalArgumentException if the site is not found
+   * @throws IllegalStateException if there is no building at the site
    */
   @Transactional
   public void deleteBuilding(long villageId, long constructionSiteId, String username) {
-    ConstructionSite site = getConstructionSite(constructionSiteId, villageId);
+    villageOwnershipService.requireOwner(villageId, username);
 
-    validateOwner(site, username);
+    ConstructionSite site = getConstructionSite(constructionSiteId, villageId);
 
     Building building = getBuildingToDelete(site);
 
@@ -202,12 +198,6 @@ public class BuildingService {
     buildingRepository.delete(building);
   }
 
-  /**
-   * Returns the building at the specified site if it exists; otherwise, returns an Optional.empty()
-   *
-   * @param site
-   * @return
-   */
   private Building getBuildingToDelete(ConstructionSite site) {
     return Optional.ofNullable(site.getBuilding())
         .orElseThrow(() -> new IllegalStateException("No building to delete at this site"));
@@ -217,22 +207,6 @@ public class BuildingService {
     return constructionSiteRepository
         .findByIdAndVillageId(constructionSiteId, villageId)
         .orElseThrow(() -> new IllegalArgumentException("Construction site not found"));
-  }
-
-  private void validateOwner(ConstructionSite site, String username) {
-    var ownerUsername =
-        Optional.ofNullable(site)
-            .map(ConstructionSite::getVillage)
-            .map(Village::getOwner)
-            .map(User::getUsername)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Construction site has no valid village or owner"));
-
-    if (!username.equals(ownerUsername)) {
-      throw new IllegalArgumentException("Not valid owner");
-    }
   }
 
   private Building getBuildingToUpgrade(ConstructionSite site) {

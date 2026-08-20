@@ -1,6 +1,7 @@
 package com.villagevandals.vandals.web.jwt;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -50,7 +51,12 @@ public class RefreshTokenService {
     /**
      * Deletes all refresh tokens for the given user. Called on logout to prevent
      * any outstanding tokens from being used after the session ends.
+     *
+     * <p>{@code deleteByUsername} is a Spring Data derived delete query — it selects the matching
+     * rows and removes them one by one — so it requires an active transaction. Nothing further up
+     * the logout path opens one, which is why the boundary is declared here.
      */
+    @Transactional
     public void revokeByUsername(String username) {
         repository.deleteByUsername(username);
     }

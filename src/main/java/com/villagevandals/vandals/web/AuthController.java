@@ -64,22 +64,31 @@ public class AuthController {
     this.restTemplate = restTemplate;
   }
 
+  /**
+   * Exchanges the HTTP-only refresh cookie for a fresh access token, rotating the cookie.
+   *
+   * <p>A missing, unknown, or expired refresh token is the ordinary end-of-session case, not a
+   * server fault, so all three answer {@code 401} — which is the status the frontend already
+   * handles by routing to the login screen. Previously they surfaced as {@code 500}: an absent
+   * cookie threw a bare {@code RuntimeException}, and the validation failures escaped uncaught.
+   */
   @PostMapping("/refresh")
   public ResponseEntity<AuthResponse> refresh(
       HttpServletRequest request, HttpServletResponse response) {
-    Cookie[] cookies = request.getCookies();
-    if (cookies == null) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+    String refreshTokenValue = readRefreshCookie(request);
+    if (refreshTokenValue == null) {
+      log.debug("Refresh rejected: no refresh cookie present");
+      return unauthorized();
     }
 
-    String refreshTokenValue =
-        Arrays.stream(cookies)
-            .filter(c -> "refreshToken".equals(c.getName()))
-            .map(Cookie::getValue)
-            .findFirst()
-            .orElseThrow(() -> new RuntimeException("No refresh token"));
-
-    RefreshToken refreshToken = refreshTokenService.validateRefreshToken(refreshTokenValue);
+    RefreshToken refreshToken;
+    try {
+      refreshToken = refreshTokenService.validateRefreshToken(refreshTokenValue);
+    } catch (IllegalArgumentException | IllegalStateException e) {
+      log.debug("Refresh rejected: {}", e.getMessage());
+      return unauthorized();
+    }
 
     refreshTokenService.revoke(refreshToken);
     RefreshToken newRefresh = refreshTokenService.createRefreshToken(refreshToken.getUsername());
@@ -89,6 +98,23 @@ public class AuthController {
     String accessToken = jwtService.generateTokenWithUsername(refreshToken.getUsername());
 
     return ResponseEntity.ok(AuthResponse.local(accessToken));
+  }
+
+  /** Returns the refresh cookie's value, or {@code null} if the request carries no such cookie. */
+  private String readRefreshCookie(HttpServletRequest request) {
+    Cookie[] cookies = request.getCookies();
+    if (cookies == null) {
+      return null;
+    }
+    return Arrays.stream(cookies)
+        .filter(c -> "refreshToken".equals(c.getName()))
+        .map(Cookie::getValue)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private ResponseEntity<AuthResponse> unauthorized() {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
   }
 
   @PostMapping("/logout")

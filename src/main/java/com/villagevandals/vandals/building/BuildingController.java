@@ -19,6 +19,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Failures are translated by {@link com.villagevandals.vandals.web.GlobalExceptionHandler}: an
+ * ownership violation becomes {@code 403}, an invalid argument {@code 400}, and an operation that
+ * does not apply to the current state {@code 409}. Handlers therefore do not catch domain
+ * exceptions themselves — doing so previously reported every failure, authorization included, as a
+ * generic {@code 400 "Unable to ..."} that hid the real reason from the client.
+ */
 @RestController
 @RequestMapping("/building")
 public class BuildingController {
@@ -42,59 +49,41 @@ public class BuildingController {
   }
 
   @PostMapping
-  public ResponseEntity<?> createBuilding(@RequestBody ConstructionRequestDTO dto) {
+  public ResponseEntity<?> createBuilding(
+      @RequestBody ConstructionRequestDTO dto, Principal principal) {
     LOG.debug("Got a request to construct: {}", dto);
-    try {
-      buildingService.constructBuilding(dto);
-      return ResponseEntity.ok(Message.of("Constructed building " + dto.type() + " successfully"));
-    } catch (Exception e) {
-      LOG.error(e.getMessage());
-      return ResponseEntity.badRequest().body("Unable to construct building");
-    }
+    buildingService.constructBuilding(dto, principal.getName());
+    return ResponseEntity.ok(Message.of("Constructed building " + dto.type() + " successfully"));
   }
 
   @GetMapping("/available")
-  public List<AvailableBuildingDTO> getAvailableBuildings(@RequestParam Long villageId, Principal principal) {
-    try {
-      return buildingService.getAvailableBuildings(villageId, principal.getName()).stream()
-          .map(AvailableBuildingDTO::fromEntity)
-          .toList();
-    } catch (Exception e) {
-      return List.of();
-    }
+  public List<AvailableBuildingDTO> getAvailableBuildings(
+      @RequestParam Long villageId, Principal principal) {
+    return buildingService.getAvailableBuildings(villageId, principal.getName()).stream()
+        .map(AvailableBuildingDTO::fromEntity)
+        .toList();
   }
 
   @PostMapping("/upgrade")
   public ResponseEntity<?> upgradeBuilding(
       @RequestBody UpgradeRequestDTO dto, Principal principal) {
-    try {
-      Building upgraded = buildingService.upgradeBuilding(dto, principal.getName());
-      return ResponseEntity.ok(BuildingDTO.fromEntity(dto.constructionSiteId(), upgraded));
-    } catch (Exception e) {
-      LOG.error("Upgrade failed: {}", e.getMessage());
-      return ResponseEntity.badRequest().body("Unable to upgrade building");
-    }
+    Building upgraded = buildingService.upgradeBuilding(dto, principal.getName());
+    return ResponseEntity.ok(BuildingDTO.fromEntity(dto.constructionSiteId(), upgraded));
   }
 
   /**
-   * Delete a building from the specified site on the specified village and principal.
+   * Demolishes the building on the given site, freeing the site for reuse.
    *
-   * @param villageId villageId
-   * @param constructionSiteId constructionSiteId
-   * @param principal principal
-   * @return
+   * @param villageId the village owning the site
+   * @param constructionSiteId the site to clear
+   * @param principal the authenticated caller, who must own the village
    */
   @DeleteMapping
   public ResponseEntity<?> deleteBuilding(
       @RequestParam Long villageId, @RequestParam Long constructionSiteId, Principal principal) {
     LOG.debug(
         "Got a request to demolish building on site {} in village {}", constructionSiteId, villageId);
-    try {
-      buildingService.deleteBuilding(villageId, constructionSiteId, principal.getName());
-      return ResponseEntity.ok(Message.of("Demolished building successfully"));
-    } catch (Exception e) {
-      LOG.error("Demolition failed: {}", e.getMessage());
-      return ResponseEntity.badRequest().body("Unable to demolish building");
-    }
+    buildingService.deleteBuilding(villageId, constructionSiteId, principal.getName());
+    return ResponseEntity.ok(Message.of("Demolished building successfully"));
   }
 }
