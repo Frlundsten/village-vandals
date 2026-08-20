@@ -40,6 +40,13 @@ This change is **behaviour-preserving**. It adds no capability and changes no re
 ### Modified Capabilities
 <!-- None. The existing specs continue to describe the behaviour exactly as before. -->
 
+> **Note:** `openspec validate` reports this change as failing with *"Change must have at least one
+> delta"* while it sits at proposal stage, because it declares no spec deltas. That is expected.
+> When the change is picked up, decide then whether the two genuine behaviour unifications warrant a
+> delta — the single affordability rule (`BuildingPresentationCard` currently defaults the opposite
+> way to the other three) and the single village-id resolution — or whether it stays delta-free.
+
+
 ## Impact
 
 - **Backend deleted:** `EconomicBuilding.java`, `UserRegistrationDTO.java`, `VillageController.java`, `JwtService.generateToken(UserDetails)`
