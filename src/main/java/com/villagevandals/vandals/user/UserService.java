@@ -14,6 +14,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
@@ -34,8 +35,13 @@ public class UserService {
   /**
    * Creates a new account and starter village for a Keycloak-provisioned user.
    *
+   * <p>Transactional because {@link VillageService#starterVillage} claims a world tile by marking
+   * it occupied. Without a shared transaction that claim commits on its own, and any later failure
+   * strands the tile: permanently occupied, with no village on it.
+   *
    * @throws RuntimeException if the username or email is already taken
    */
+  @Transactional
   public void newUser(String username, String email, String roles) {
     if (userRepository.findByUsername(username).isPresent()) {
       throw new RuntimeException("Username already taken");

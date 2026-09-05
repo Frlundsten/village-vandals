@@ -3,8 +3,9 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import BuildingUpgradeCard from '../BuildingUpgradeCard.vue'
+import { MAX_TRAINING_BATCH_SIZE, MIN_TRAINING_BATCH_SIZE } from '@/util/gameConfig.js'
 import { useResourceStore } from '@/stores/resources.js'
-import { useArmyStore } from '@/stores/army.js'
+import { useTrainingStore } from '@/stores/training.js'
 import * as unitsApi from '@/util/api/units.js'
 
 vi.mock('@/util/api/units.js', () => ({
@@ -25,6 +26,27 @@ const farmBuilding = {
   constructionSiteId: 2,
   upgradeCost: { food: 100, wood: 50 },
   productionPerHour: 1800,
+}
+
+/** Seed the shared training store directly, as a train response would. */
+function seedQueue(orders) {
+  const store = useTrainingStore()
+  store.setOrders(orders)
+  return store
+}
+
+/** Seed the store the way Home.vue does, so it also caches the village id. */
+async function hydrateQueue(orders, villageId = 1) {
+  unitsApi.fetchTrainingQueue.mockResolvedValueOnce(orders)
+  const store = useTrainingStore()
+  await store.hydrate(villageId)
+  return store
+}
+
+function mountCard(building = barracks, currentResources = { food: 200, iron: 100 }) {
+  return mount(BuildingUpgradeCard, {
+    props: { building, villageId: 1, currentResources },
+  })
 }
 
 function makeOrder(overrides = {}) {
@@ -51,11 +73,9 @@ describe('BuildingUpgradeCard — training queue section', () => {
   })
 
   it('renders queue section with countdown when orders exist', async () => {
-    unitsApi.fetchTrainingQueue.mockResolvedValue([makeOrder()])
+    seedQueue([makeOrder()])
 
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 100 } },
-    })
+    const wrapper = mountCard()
     await flushPromises()
 
     expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
@@ -64,13 +84,16 @@ describe('BuildingUpgradeCard — training queue section', () => {
   })
 
   it('renders queue rows with a quantity badge and a single countdown sized to the batch duration', async () => {
-    unitsApi.fetchTrainingQueue.mockResolvedValue([
-      makeOrder({ id: 1, quantity: 12, queuePosition: 1, finishesAt: new Date(Date.now() + 60000).toISOString() }),
+    seedQueue([
+      makeOrder({
+        id: 1,
+        quantity: 12,
+        queuePosition: 1,
+        finishesAt: new Date(Date.now() + 60000).toISOString(),
+      }),
     ])
 
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 100 } },
-    })
+    const wrapper = mountCard()
     await flushPromises()
 
     const activeRow = wrapper.find('[data-testid="training-queue"]')
@@ -80,15 +103,13 @@ describe('BuildingUpgradeCard — training queue section', () => {
     expect(Number(progress.attributes('max'))).toBe(12 * 5000)
   })
 
-  it('renders queued orders with "ready in Xs" text for queuePosition > 1', async () => {
-    unitsApi.fetchTrainingQueue.mockResolvedValue([
+  it('renders later orders as queued rows with "ready in Xs" text', async () => {
+    seedQueue([
       makeOrder({ id: 1, queuePosition: 1, finishesAt: new Date(Date.now() + 3000).toISOString() }),
       makeOrder({ id: 2, queuePosition: 2, finishesAt: new Date(Date.now() + 8000).toISOString() }),
     ])
 
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 100 } },
-    })
+    const wrapper = mountCard()
     await flushPromises()
 
     const queuedOrders = wrapper.findAll('[data-testid="queued-order"]')
@@ -102,11 +123,9 @@ describe('BuildingUpgradeCard — training queue section', () => {
     const now = Date.now()
     const serverTime = new Date(now - 70000).toISOString()
     const finishesAt = new Date(now - 70000 + 5000).toISOString()
-    unitsApi.fetchTrainingQueue.mockResolvedValue([makeOrder({ finishesAt, serverTime, queuePosition: 1 })])
+    seedQueue([makeOrder({ finishesAt, serverTime, queuePosition: 1 })])
 
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 100 } },
-    })
+    const wrapper = mountCard()
     await flushPromises()
 
     expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
@@ -119,11 +138,7 @@ describe('BuildingUpgradeCard — training queue section', () => {
   })
 
   it('does not render queue section when queue is empty', async () => {
-    unitsApi.fetchTrainingQueue.mockResolvedValue([])
-
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 200, iron: 100 } },
-    })
+    const wrapper = mountCard()
     await flushPromises()
 
     expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(false)
@@ -176,46 +191,75 @@ describe('BuildingUpgradeCard — train action queue render', () => {
     // Queue renders immediately from POST response — no second fetchTrainingQueue needed
     expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="countdown"]').exists()).toBe(true)
-    // fetchTrainingQueue was only called once (on mount), not again after training
-    expect(unitsApi.fetchTrainingQueue).toHaveBeenCalledTimes(1)
+    // The card never fetches the queue itself — the store owns it
+    expect(unitsApi.fetchTrainingQueue).not.toHaveBeenCalled()
   })
 
-  it('queue stays visible when the mount-time fetch resolves AFTER Train is clicked', async () => {
-    // Simulate a slow mount-time GET that is still in-flight when the user clicks Train.
-    // Without protection, the GET response (empty queue) will overwrite the POST response
-    // and erase the countdown the user just triggered.
-    let resolveMountFetch
-    unitsApi.fetchTrainingQueue.mockReturnValueOnce(
-      new Promise((resolve) => { resolveMountFetch = resolve }),
-    )
+  it('renders the queue from the store on open, without fetching the training queue', async () => {
+    seedQueue([makeOrder({ quantity: 3 })])
 
-    const finishesAt = new Date(Date.now() + 20000).toISOString()
-    unitsApi.trainUnit.mockResolvedValue([
-      makeOrder({ finishesAt, quantity: 5, queuePosition: 1 }),
+    const wrapper = mountCard()
+    await flushPromises()
+
+    // The store is already hydrated, so the card shows the live queue straight away
+    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="countdown"]').exists()).toBe(true)
+    expect(unitsApi.fetchTrainingQueue).not.toHaveBeenCalled()
+  })
+
+  it('shows only the orders belonging to this building', async () => {
+    seedQueue([
+      makeOrder({ id: 1, buildingId: 10, finishesAt: new Date(Date.now() + 3000).toISOString() }),
+      makeOrder({ id: 2, buildingId: 99, finishesAt: new Date(Date.now() + 8000).toISOString() }),
     ])
 
-    const store = useResourceStore()
-    store.food = 1000
-    store.iron = 1000
+    const wrapper = mountCard()
+    await flushPromises()
 
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 1000, iron: 1000 } },
-    })
-    // Mount-time GET is still pending — do NOT flush promises here
+    // Only barracks 10's order — the other barrack's order must not appear here
+    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="queued-order"]')).toHaveLength(0)
+  })
+
+  it('hands the POST /train response to the training store', async () => {
+    const finishesAt = new Date(Date.now() + 20000).toISOString()
+    unitsApi.trainUnit.mockResolvedValue([
+      { id: 42, unitType: 'VANDAL', buildingId: 10, finishesAt, quantity: 4, queuePosition: 1 },
+    ])
+
+    const resources = useResourceStore()
+    resources.food = 1000
+    resources.iron = 1000
+    const trainingStore = useTrainingStore()
+
+    const wrapper = mountCard()
+    await flushPromises()
 
     await wrapper.find('[data-testid="train-vandal-button"]').trigger('click')
     await flushPromises()
 
-    // Queue shows from POST response
+    expect(trainingStore.orders.map((o) => o.id)).toEqual([42])
+  })
+
+  it('countdown keeps running after the card is unmounted and still refreshes the roster', async () => {
+    unitsApi.fetchRoster.mockResolvedValue([{ unitType: 'VANDAL', count: 1, hp: 4, damage: 1 }])
+    const trainingStore = await hydrateQueue(
+      [makeOrder({ finishesAt: new Date(Date.now() + 5000).toISOString() })],
+      1,
+    )
+
+    const wrapper = mountCard()
+    await flushPromises()
     expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
 
-    // Now the stale mount-time GET resolves with an empty queue (pre-dates the POST)
-    resolveMountFetch([])
+    // The player closes the building card while training is still running
+    wrapper.unmount()
+
+    vi.advanceTimersByTime(5100)
     await flushPromises()
 
-    // Queue must still be visible — stale GET must not erase the countdown
-    expect(wrapper.find('[data-testid="training-queue"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="countdown"]').exists()).toBe(true)
+    expect(trainingStore.orders).toHaveLength(0)
+    expect(unitsApi.fetchRoster).toHaveBeenCalledWith(1)
   })
 
   it('queue remains visible with a corrected countdown when backend clock lags client clock', async () => {
@@ -225,9 +269,7 @@ describe('BuildingUpgradeCard — train action queue render', () => {
     const serverTime = new Date(now - 70000).toISOString()
     const finishesAt = new Date(now - 70000 + 5000).toISOString()
 
-    unitsApi.trainUnit.mockResolvedValue([
-      makeOrder({ finishesAt, serverTime, queuePosition: 1 }),
-    ])
+    unitsApi.trainUnit.mockResolvedValue([makeOrder({ finishesAt, serverTime, queuePosition: 1 })])
 
     const store = useResourceStore()
     store.food = 200
@@ -252,12 +294,10 @@ describe('BuildingUpgradeCard — train action queue render', () => {
 
   it('fetches the army roster when the training countdown reaches zero', async () => {
     const finishesAt = new Date(Date.now() + 50).toISOString()
-    unitsApi.fetchTrainingQueue.mockResolvedValue([makeOrder({ finishesAt })])
     unitsApi.fetchRoster.mockResolvedValue([{ unitType: 'VANDAL', count: 1, hp: 4, damage: 1 }])
+    await hydrateQueue([makeOrder({ finishesAt })], 1)
 
-    const wrapper = mount(BuildingUpgradeCard, {
-      props: { building: barracks, villageId: 1, currentResources: { food: 100, iron: 100 } },
-    })
+    const wrapper = mountCard(barracks, { food: 100, iron: 100 })
     await flushPromises()
 
     // Advance timers past the finishesAt
@@ -288,20 +328,35 @@ describe('BuildingUpgradeCard — bulk training quantity', () => {
     })
   }
 
-  it('renders a quantity input defaulting to 1 with increment/decrement controls, clamped to [0, 999]', async () => {
+  it('clamps the quantity to the bounds the server accepts', async () => {
+    // The server rejects anything outside [1, MAX_TRAINING_BATCH_SIZE]; the control used to
+    // allow [0, 999], so the player could compose a request that could only fail.
     const wrapper = mountBarrackCard()
     await flushPromises()
 
     const input = wrapper.find('[data-testid="train-quantity-input"]')
     expect(input.exists()).toBe(true)
-    expect(Number(input.element.value)).toBe(1)
+    expect(Number(input.element.value)).toBe(MIN_TRAINING_BATCH_SIZE)
 
     await wrapper.find('[data-testid="quantity-decrement"]').trigger('click')
     await wrapper.find('[data-testid="quantity-decrement"]').trigger('click')
-    expect(Number(wrapper.find('[data-testid="train-quantity-input"]').element.value)).toBe(0)
+    expect(Number(wrapper.find('[data-testid="train-quantity-input"]').element.value)).toBe(
+      MIN_TRAINING_BATCH_SIZE,
+    )
 
     await input.setValue(5000)
-    expect(Number(wrapper.find('[data-testid="train-quantity-input"]').element.value)).toBe(999)
+    expect(Number(wrapper.find('[data-testid="train-quantity-input"]').element.value)).toBe(
+      MAX_TRAINING_BATCH_SIZE,
+    )
+  })
+
+  it('exposes the server bounds on the quantity input itself', async () => {
+    const wrapper = mountBarrackCard()
+    await flushPromises()
+
+    const input = wrapper.find('[data-testid="train-quantity-input"]')
+    expect(input.attributes('min')).toBe(String(MIN_TRAINING_BATCH_SIZE))
+    expect(input.attributes('max')).toBe(String(MAX_TRAINING_BATCH_SIZE))
   })
 
   it('scales the resource cost preview live with the chosen quantity', async () => {

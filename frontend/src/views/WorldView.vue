@@ -10,6 +10,13 @@
     @pointerleave="handlePointerUp"
   >
     <div
+      v-if="loadError"
+      class="alert alert-error absolute top-4 left-1/2 -translate-x-1/2 z-10 w-auto"
+      data-testid="world-error"
+    >
+      <span>{{ loadError }}</span>
+    </div>
+    <div
       class="iso-grid"
       :style="{
         transform: `translate(${translate.x}px, ${translate.y}px) scale(${zoom})`,
@@ -37,6 +44,8 @@ import { fetchUsers } from '@/util/api/villages.js'
 
 const gridSize = 10
 const defaultColor = '#ffffff'
+const OCCUPIED_COLOR = '#f44336'
+const loadError = ref(null)
 const zoom = ref(1)
 const translate = ref({ x: 0, y: 0 })
 const origin = ref({ x: 0, y: 0 })
@@ -82,17 +91,21 @@ const tileWidth = 80
 const tileHeight = 80
 
 onMounted(async () => {
-  //fetch all players villages.
-  const users = await fetchUsers()
-  console.log(users)
+  // A failed fetch must not abort the centring below: getX() is negative for the whole
+  // lower-left half of the diamond, so an uncentred grid renders half off-screen.
+  try {
+    const users = await fetchUsers()
 
-  users.forEach((village) => {
-    const key = `${village.y}-${village.x}` // row-col
-    const tile = tileMap.get(key)
-    if (tile) {
-      tile.color = '#f44336' // mark as occupied
+    for (const village of Array.isArray(users) ? users : []) {
+      const key = `${village.y}-${village.x}` // row-col
+      const tile = tileMap.get(key)
+      if (tile) {
+        tile.color = OCCUPIED_COLOR
+      }
     }
-  })
+  } catch (e) {
+    loadError.value = e.message ?? 'Could not load the world map'
+  }
 
   // Calculate grid width and height in pixels using your isometric formulas
   const minX = getX(gridSize - 1) // left-most

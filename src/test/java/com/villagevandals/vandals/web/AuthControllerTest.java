@@ -17,7 +17,10 @@ import com.villagevandals.vandals.user.UserService;
 import com.villagevandals.vandals.web.jwt.JwtService;
 import com.villagevandals.vandals.web.jwt.RefreshToken;
 import com.villagevandals.vandals.web.jwt.RefreshTokenService;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -151,6 +154,69 @@ class AuthControllerTest {
         .andExpect(status().isOk());
 
     verify(refreshTokenService).revokeByUsername("keycloakUser");
+  }
+
+  // --- /auth/refresh: an unusable token is the end of a session, not a server fault ---
+
+  @Test
+  void refresh_noCookiesAtAll_returns401() throws Exception {
+    mvc.perform(post("/auth/refresh")).andExpect(status().isUnauthorized());
+
+    verify(refreshTokenService, never()).validateRefreshToken(anyString());
+  }
+
+  @Test
+  void refresh_cookiesButNoRefreshCookie_returns401() throws Exception {
+    mvc.perform(post("/auth/refresh").cookie(new Cookie("somethingElse", "value")))
+        .andExpect(status().isUnauthorized());
+
+    verify(refreshTokenService, never()).validateRefreshToken(anyString());
+  }
+
+  @Test
+  void refresh_unknownRefreshToken_returns401AndIssuesNothing() throws Exception {
+    when(refreshTokenService.validateRefreshToken("unknown"))
+        .thenThrow(new IllegalArgumentException("Invalid refresh token"));
+
+    mvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", "unknown")))
+        .andExpect(status().isUnauthorized());
+
+    verify(refreshTokenService, never()).createRefreshToken(anyString());
+    verify(jwtService, never()).generateTokenWithUsername(anyString());
+  }
+
+  @Test
+  void refresh_expiredRefreshToken_returns401() throws Exception {
+    when(refreshTokenService.validateRefreshToken("expired"))
+        .thenThrow(new IllegalStateException("Refresh token expired"));
+
+    mvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", "expired")))
+        .andExpect(status().isUnauthorized());
+
+    verify(refreshTokenService, never()).createRefreshToken(anyString());
+  }
+
+  @Test
+  void refresh_validRefreshToken_returnsNewAccessTokenAndRotatesTheCookie() throws Exception {
+    RefreshToken current = new RefreshToken();
+    current.setToken("current");
+    current.setUsername("alice");
+    current.setExpiryDate(Instant.now().plus(1, ChronoUnit.HOURS));
+
+    RefreshToken rotated = new RefreshToken();
+    rotated.setToken("rotated");
+    rotated.setUsername("alice");
+
+    when(refreshTokenService.validateRefreshToken("current")).thenReturn(current);
+    when(refreshTokenService.createRefreshToken("alice")).thenReturn(rotated);
+    when(jwtService.generateTokenWithUsername("alice")).thenReturn("fresh-jwt");
+
+    mvc.perform(post("/auth/refresh").cookie(new Cookie("refreshToken", "current")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").value("fresh-jwt"))
+        .andExpect(cookie().value("refreshToken", "rotated"));
+
+    verify(refreshTokenService).revoke(current);
   }
 
   @Test

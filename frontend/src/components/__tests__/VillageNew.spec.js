@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 import VillageNew from '../VillageNew.vue'
+import { useTrainingStore } from '@/stores/training.js'
 import * as buildingsApi from '@/util/api/buildings.js'
-import { Application, Assets, Graphics } from 'pixi.js'
+import { Application, Assets, Container, Graphics } from 'pixi.js'
 
 vi.mock('pixi.js', () => ({
   Application: vi.fn(function () {
@@ -88,6 +90,7 @@ vi.mock('@/util/api/resources.js', () => ({
 vi.mock('@/util/api/units.js', () => ({
   trainUnit: vi.fn(),
   fetchRoster: vi.fn(),
+  fetchTrainingQueue: vi.fn().mockResolvedValue([]),
 }))
 
 describe('VillageNew — drag vs click', () => {
@@ -431,6 +434,270 @@ describe('VillageNew — badge update on upgrade', () => {
 
     expect(wrapper.vm.buildingBadges.find((b) => b.constructionSiteId === 5).level).toBe(2)
 
+    wrapper.unmount()
+  })
+})
+
+describe('VillageNew — training indicator', () => {
+  let wrapper
+
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    buildingsApi.constructBuilding.mockResolvedValue({})
+
+    wrapper = mount(VillageNew, {
+      attachTo: document.body,
+      global: { stubs: { BuildingMenu: true, BuildingUpgradeCard: true } },
+    })
+    await flushPromises()
+    wrapper.vm.currentTile = { row: 0, col: 0, constructionSiteId: 3 }
+  })
+
+  afterEach(() => {
+    wrapper.unmount()
+  })
+
+  it('shows the training indicator for a barrack whose buildingId differs from its site id', async () => {
+    // Construction site 3 holds the barrack whose building PK is 77 — two distinct
+    // identifier spaces, and the training order only ever carries the building PK.
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 3, buildingId: 77, type: 'BARRACK', level: 1 },
+    ])
+    await wrapper.vm.handleBuildingSelection('BARRACK')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="training-indicator"]').exists()).toBe(false)
+
+    useTrainingStore().setOrders([
+      {
+        id: 1,
+        unitType: 'VANDAL',
+        buildingId: 77,
+        quantity: 1,
+        queuePosition: 1,
+        finishesAt: new Date(Date.now() + 5000).toISOString(),
+      },
+    ])
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="training-indicator"]').exists()).toBe(true)
+  })
+
+  it('shows no training indicator for a barrack with no pending orders', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([
+      { constructionSiteId: 3, buildingId: 77, type: 'BARRACK', level: 1 },
+    ])
+    await wrapper.vm.handleBuildingSelection('BARRACK')
+    await flushPromises()
+
+    useTrainingStore().setOrders([
+      {
+        id: 1,
+        unitType: 'VANDAL',
+        buildingId: 99,
+        quantity: 1,
+        queuePosition: 1,
+        finishesAt: new Date(Date.now() + 5000).toISOString(),
+      },
+    ])
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="training-indicator"]').exists()).toBe(false)
+  })
+})
+
+describe('VillageNew — load failures and teardown', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    Assets.load.mockResolvedValue({
+      layers: [],
+      tilewidth: 32,
+      tileheight: 32,
+      tileset: { tile: [] },
+    })
+  })
+
+  it('still renders the map and shows an error when the buildings fetch fails', async () => {
+    buildingsApi.fetchBuildings.mockRejectedValue(new Error('Not the owner of village 1'))
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    // The map must not be gated on building data — the player used to get a blank white div.
+    expect(Application).toHaveBeenCalled()
+    expect(wrapper.vm.loading).toBe(false)
+    expect(wrapper.text()).toContain('Not the owner of village 1')
+    expect(wrapper.text()).not.toContain('Loading village')
+  })
+
+  it('shows an error when the map assets fail to load', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    Assets.load.mockRejectedValue(new Error('tileset unavailable'))
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    expect(wrapper.vm.loading).toBe(false)
+    expect(wrapper.text()).toContain('tileset unavailable')
+  })
+
+  it('unmounting during the buildings fetch builds nothing and registers no listener', async () => {
+    let releaseBuildings
+    buildingsApi.fetchBuildings.mockReturnValue(
+      new Promise((resolve) => {
+        releaseBuildings = resolve
+      }),
+    )
+
+    const addSpy = vi.spyOn(window, 'addEventListener')
+
+    const wrapper = mount(VillageNew)
+    await nextTick()
+
+    // The player navigates away while the buildings request is still in flight.
+    wrapper.unmount()
+
+    releaseBuildings([])
+    await flushPromises()
+
+    expect(Application).not.toHaveBeenCalled()
+    expect(addSpy.mock.calls.filter(([event]) => event === 'resize')).toHaveLength(0)
+
+    addSpy.mockRestore()
+  })
+
+  it('unmounting after the app is created still destroys it and registers no listener', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+
+    let releaseInit
+    Application.mockImplementationOnce(function () {
+      return {
+        init: vi.fn().mockReturnValue(
+          new Promise((resolve) => {
+            releaseInit = resolve
+          }),
+        ),
+        stage: { addChild: vi.fn(), on: vi.fn() },
+        canvas: document.createElement('canvas'),
+        renderer: { width: 800, height: 600 },
+        screen: { x: 0, y: 0, width: 800, height: 600 },
+        destroy: vi.fn(),
+      }
+    })
+
+    const addSpy = vi.spyOn(window, 'addEventListener')
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    // Unmount while app.init() is still pending — this is where the old code leaked, because
+    // onBeforeUnmount ran before `app` was assigned and the continuation then added a listener.
+    wrapper.unmount()
+    releaseInit(undefined)
+    await flushPromises()
+
+    const created = Application.mock.results[0].value
+    expect(created.destroy).toHaveBeenCalled()
+    expect(addSpy.mock.calls.filter(([event]) => event === 'resize')).toHaveLength(0)
+
+    addSpy.mockRestore()
+  })
+
+  it('a fully mounted view tears everything down on unmount', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    wrapper.unmount()
+
+    const created = Application.mock.results[0].value
+    expect(created.destroy).toHaveBeenCalled()
+    expect(removeSpy.mock.calls.some(([event]) => event === 'resize')).toBe(true)
+    removeSpy.mockRestore()
+  })
+
+  it('a failed upgrade keeps the card open and shows the reason', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    buildingsApi.upgradeBuilding.mockRejectedValue(
+      new Error('Insufficient wood: need 200, have 50'),
+    )
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    wrapper.vm.showUpgradeCard = true
+    await wrapper.vm.handleUpgrade(1)
+    await nextTick()
+
+    expect(wrapper.vm.showUpgradeCard).toBe(true)
+    expect(wrapper.text()).toContain('Insufficient wood: need 200, have 50')
+  })
+
+  it('a successful upgrade closes the card', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    buildingsApi.upgradeBuilding.mockResolvedValue({})
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    wrapper.vm.showUpgradeCard = true
+    await wrapper.vm.handleUpgrade(1)
+    await nextTick()
+
+    expect(wrapper.vm.showUpgradeCard).toBe(false)
+  })
+
+  it('a failed construction surfaces the reason', async () => {
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+    buildingsApi.constructBuilding.mockRejectedValue(
+      new Error('A building already exists on this site'),
+    )
+
+    const wrapper = mount(VillageNew)
+    await flushPromises()
+
+    wrapper.vm.currentTile = { row: 0, col: 0, constructionSiteId: 1 }
+    await wrapper.vm.handleBuildingSelection('FARM')
+    await nextTick()
+
+    expect(wrapper.text()).toContain('A building already exists on this site')
+  })
+})
+
+describe('VillageNew — resize fits the new canvas size', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    Assets.load.mockResolvedValue({
+      layers: [],
+      tilewidth: 32,
+      tileheight: 32,
+      tileset: { tile: [] },
+    })
+    buildingsApi.fetchBuildings.mockResolvedValue([])
+  })
+
+  it('centres on the resize target size, not the stale renderer size', async () => {
+    const wrapper = mount(VillageNew, { attachTo: document.body })
+    await flushPromises()
+
+    // PixiJS defers renderer.resize() to requestAnimationFrame, so during the resize event the
+    // renderer still reports the OLD size while the target element already reports the new one.
+    const target = wrapper.element.querySelector('div')
+    Object.defineProperty(target, 'clientWidth', { value: 400, configurable: true })
+    Object.defineProperty(target, 'clientHeight', { value: 300, configurable: true })
+
+    const mapContainer = Container.mock.results[0].value
+    mapContainer.position.set.mockClear()
+
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+
+    expect(mapContainer.position.set).toHaveBeenCalledWith(200, 150)
     wrapper.unmount()
   })
 })

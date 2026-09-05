@@ -9,6 +9,23 @@
       Loading village…
     </div>
 
+    <div
+      v-if="loadError"
+      class="absolute top-2 left-1/2 -translate-x-1/2 z-30 alert alert-error w-auto"
+      data-testid="village-load-error"
+    >
+      <span>{{ loadError }}</span>
+    </div>
+
+    <!-- z-60 so it stays readable above the building card, which is z-50 -->
+    <div
+      v-if="actionError"
+      class="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] alert alert-error w-auto"
+      data-testid="village-action-error"
+    >
+      <span>{{ actionError }}</span>
+    </div>
+
     <!-- Level badges rendered as HTML so they stay at a fixed CSS size regardless of map zoom -->
     <template v-for="badge in buildingBadges" :key="badge.constructionSiteId">
       <div
@@ -23,9 +40,15 @@
       </div>
       <!-- Pulsating training indicator: shown when this barrack has an active training order -->
       <div
-        v-if="trainingQueue.hasActiveFor(badge.constructionSiteId)"
+        v-if="trainingStore.hasActiveFor(badge.buildingId)"
+        data-testid="training-indicator"
         class="absolute z-10 pointer-events-none animate-pulse ring-4 ring-amber-400 rounded-sm"
-        :style="{ left: badge.x - 32 + 'px', top: badge.y - 48 + 'px', width: '64px', height: '64px' }"
+        :style="{
+          left: badge.x - 32 + 'px',
+          top: badge.y - 48 + 'px',
+          width: '64px',
+          height: '64px',
+        }"
       ></div>
     </template>
 
@@ -60,7 +83,7 @@ import BuildingUpgradeCard from '@/components/BuildingUpgradeCard.vue'
 import { constructBuilding, fetchBuildings, upgradeBuilding } from '@/util/api/buildings.js'
 import { useResourceStore } from '@/stores/resources.js'
 import { clampMapPosition } from '@/util/clampMapPosition.js'
-import { useTrainingQueue } from '@/composables/useTrainingQueue.js'
+import { useTrainingStore } from '@/stores/training.js'
 
 const route = useRoute()
 const villageId = Number(route.params.villageId) || Number(localStorage.getItem('villageId'))
@@ -71,9 +94,12 @@ let container
 let mapDataRef = null
 
 const resourceStore = useResourceStore()
-const trainingQueue = useTrainingQueue(villageId)
+const trainingStore = useTrainingStore()
 
 const loading = ref(true)
+// A failure that stopped the view loading, vs. one caused by an action the player took.
+const loadError = ref(null)
+const actionError = ref(null)
 const showMenu = ref(false)
 const showUpgradeCard = ref(false)
 const currentTile = ref({})
@@ -93,6 +119,9 @@ let containerStart = { x: 0, y: 0 }
 let dragInitiatedOnCanvas = false
 const DRAG_THRESHOLD = 5
 let canvasCleanup = null
+// The mount is a long async chain; the player can leave part-way through it.
+let cancelled = false
+let resizeListenerAttached = false
 
 function updateBadgePositions() {
   if (!app) return
@@ -100,6 +129,8 @@ function updateBadgePositions() {
     const gp = bc.getGlobalPosition()
     return {
       constructionSiteId: siteId,
+      // Training orders are keyed by the building PK, not the construction site id
+      buildingId: buildingsBySiteId.value.get(siteId)?.buildingId ?? null,
       level: buildingsBySiteId.value.get(siteId)?.level ?? 1,
       x: Math.round(gp.x),
       y: Math.round(gp.y),
@@ -107,10 +138,26 @@ function updateBadgePositions() {
   })
 }
 
+/**
+ * The size the canvas is being sized *to*.
+ *
+ * PixiJS's ResizePlugin defers renderer.resize() to the next animation frame, so during a resize
+ * event the renderer still reports the previous dimensions while the element that resizeTo points
+ * at already reports the new ones. Falls back to the renderer when the element reports zero,
+ * which is what happens under jsdom.
+ */
+function viewportSize() {
+  const target = pixiContainer.value
+  return {
+    width: target?.clientWidth || app.renderer.width,
+    height: target?.clientHeight || app.renderer.height,
+  }
+}
+
 function resizeTilemap() {
   if (!app || !container || !mapDataRef) return
 
-  const { width: canvasWidth, height: canvasHeight } = app.renderer
+  const { width: canvasWidth, height: canvasHeight } = viewportSize()
 
   const bounds = container.getLocalBounds()
   const mapWidth = bounds.width
@@ -131,14 +178,25 @@ function resizeTilemap() {
 }
 
 onMounted(async () => {
+  // The map needs no building data to render, so a failed fetch costs the player their building
+  // sprites, not the whole screen.
+  let existingBuildings = []
   try {
-    const existingBuildings = await fetchBuildings(villageId)
+    existingBuildings = await fetchBuildings(villageId)
     existingBuildings.forEach((b) => buildingsBySiteId.value.set(b.constructionSiteId, b))
+  } catch (error) {
+    console.error('Failed to load buildings', error)
+    loadError.value = error.message ?? 'Could not load your buildings'
+  }
 
+  if (cancelled) return teardown()
+
+  try {
     const tileSprites = new Map()
     app = new Application()
 
     await app.init({ background: '#1099bb', resizeTo: pixiContainer.value })
+    if (cancelled) return teardown()
 
     pixiContainer.value.appendChild(app.canvas)
 
@@ -183,6 +241,7 @@ onMounted(async () => {
 
     // Load main map JSON (vv.tmj)
     const mapData = await Assets.load(mapUrl)
+    if (cancelled) return teardown()
     mapDataRef = mapData
 
     // Load tileset JSON and create GID -> texture mapping
@@ -190,6 +249,7 @@ onMounted(async () => {
     const loadedTextures = {}
 
     const tilesetJson = await Assets.load(mapTilesUrl)
+    if (cancelled) return teardown()
     const tilePromises = tilesetJson.tileset.tile.map((tile) => {
       const id = tile._id
       const fullPath = `/assets/${tile.image._source}`
@@ -201,6 +261,7 @@ onMounted(async () => {
       })
     })
     await Promise.all(tilePromises)
+    if (cancelled) return teardown()
 
     let constructionSiteId = 0
     const buildingSpritePromises = []
@@ -249,6 +310,7 @@ onMounted(async () => {
     }
 
     await Promise.all(buildingSpritePromises)
+    if (cancelled) return teardown()
 
     const bounds = container.getLocalBounds()
 
@@ -284,13 +346,39 @@ onMounted(async () => {
     })
 
     loading.value = false
+    resizeTilemap()
+    window.addEventListener('resize', resizeTilemap)
+    resizeListenerAttached = true
   } catch (error) {
     console.error(error)
+    loadError.value = error.message ?? 'Could not load your village'
     loading.value = false
   }
-  resizeTilemap()
-  window.addEventListener('resize', resizeTilemap)
+
+  // Whichever of mount and unmount finishes last does the cleanup.
+  if (cancelled) teardown()
 })
+
+/**
+ * Releases everything the mount created. Idempotent, because it runs from both onBeforeUnmount
+ * and the tail of the async mount — previously neither path cleaned up when the player navigated
+ * away mid-mount, leaking a live WebGL context and a permanent resize listener per visit.
+ */
+function teardown() {
+  canvasCleanup?.()
+  canvasCleanup = null
+
+  if (resizeListenerAttached) {
+    window.removeEventListener('resize', resizeTilemap)
+    resizeListenerAttached = false
+  }
+
+  if (app) {
+    app.destroy(true, { children: true })
+    app = null
+  }
+  container = null
+}
 
 function isConstructionSiteTile(gid) {
   return gid - 1 === 58
@@ -329,12 +417,14 @@ function addSpriteTileEvent(tileSprites, sprite, row, col, gid, constructionSite
 
 async function handleBuildingSelection(type) {
   const { row, col, constructionSiteId } = currentTile.value
+  actionError.value = null
   try {
     await constructBuilding(type, constructionSiteId, villageId)
     const updated = await fetchBuildings(villageId)
     updated.forEach((b) => buildingsBySiteId.value.set(b.constructionSiteId, b))
   } catch (e) {
     console.error('Failed to construct building:', e)
+    actionError.value = e.message ?? 'Could not construct that building'
     return
   }
   const level = buildingsBySiteId.value.get(constructionSiteId)?.level ?? 1
@@ -388,6 +478,7 @@ async function addBuildingSprite(
 }
 
 async function handleUpgrade(constructionSiteId) {
+  actionError.value = null
   try {
     await upgradeBuilding(villageId, constructionSiteId)
     const updated = await fetchBuildings(villageId)
@@ -398,10 +489,11 @@ async function handleUpgrade(constructionSiteId) {
     if (badge) badge.level = currentBuilding.value?.level ?? 1
 
     await resourceStore.refresh(villageId)
-  } catch (e) {
-    console.error('Upgrade failed', e)
-  } finally {
     showUpgradeCard.value = false
+  } catch (e) {
+    // Closing the card on failure made a rejected upgrade indistinguishable from a mis-click.
+    console.error('Upgrade failed', e)
+    actionError.value = e.message ?? 'Could not upgrade that building'
   }
 }
 
@@ -412,16 +504,19 @@ function setupSprite(sprite, col, row, tileWidth, tileHeight) {
 }
 
 onBeforeUnmount(() => {
-  canvasCleanup?.()
-  window.removeEventListener('resize', resizeTilemap)
-  if (app) app.destroy(true, { children: true })
+  cancelled = true
+  teardown()
 })
 
 defineExpose({
   handleBuildingSelection,
+  handleUpgrade,
   buildingsBySiteId,
   currentTile,
   loading,
+  loadError,
+  actionError,
+  showUpgradeCard,
   dragging,
   buildingBadges,
 })

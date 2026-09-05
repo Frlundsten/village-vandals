@@ -25,5 +25,10 @@ public class GameDefaults {
 
     // Training queue
     public static final int TRAINING_DURATION_SECONDS = 5;
+    /**
+     * Upper bound on a single training order. Also a safety bound: unit cost is computed as
+     * {@code cost * quantity} in int arithmetic, which wraps negative for very large quantities.
+     */
+    public static final int MAX_TRAINING_BATCH_SIZE = 50;
 
 }

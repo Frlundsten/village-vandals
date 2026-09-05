@@ -13,6 +13,7 @@ import com.villagevandals.vandals.constructionsite.ConstructionSiteRepository;
 import com.villagevandals.vandals.resource.ResourcesService;
 import com.villagevandals.vandals.user.User;
 import com.villagevandals.vandals.village.Village;
+import com.villagevandals.vandals.village.VillageOwnershipService;
 import com.villagevandals.vandals.village.VillageRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.access.AccessDeniedException;
 
 class BuildingDeleteTest {
 
@@ -32,6 +34,7 @@ class BuildingDeleteTest {
   @Mock ConstructionSiteRepository constructionSiteRepository;
   @Mock BuildingRepository buildingRepository;
   @Mock ResourcesService resourcesService;
+  @Mock VillageOwnershipService villageOwnershipService;
 
   BuildingService service;
 
@@ -43,7 +46,11 @@ class BuildingDeleteTest {
     MockitoAnnotations.openMocks(this);
     service =
         new BuildingService(
-            resourcesService, villageRepository, constructionSiteRepository, buildingRepository);
+            resourcesService,
+            villageRepository,
+            constructionSiteRepository,
+            buildingRepository,
+            villageOwnershipService);
   }
 
   /**
@@ -92,24 +99,22 @@ class BuildingDeleteTest {
     verify(buildingRepository).delete(barrack);
   }
 
-  /**
-   * Tests to verify that building deletion does not throw an exception when the site is owned by a different person.
-   */
+  /** A player who does not own the village cannot demolish anything in it. */
   @Test
   void deleteBuilding_nonOwner_throwsAndChangesNothing() {
     Farm farm = new Farm();
-    Village village = villageOwnedBy(OWNER);
-    ConstructionSite site = new ConstructionSite(village, farm, 1);
-    when(constructionSiteRepository.findByIdAndVillageId(SITE_ID, VILLAGE_ID))
-        .thenReturn(Optional.of(site));
+    ConstructionSite site = new ConstructionSite(villageOwnedBy(OWNER), farm, 1);
+    doThrow(new AccessDeniedException("Not the owner of village " + VILLAGE_ID))
+        .when(villageOwnershipService)
+        .requireOwner(VILLAGE_ID, INTRUDER);
 
     assertThatThrownBy(() -> service.deleteBuilding(VILLAGE_ID, SITE_ID, INTRUDER))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(AccessDeniedException.class);
 
     assertThat(site.getBuilding()).isEqualTo(farm);
     verifyNoInteractions(resourcesService);
+    verifyNoInteractions(constructionSiteRepository);
     verify(buildingRepository, never()).delete(any());
-    verify(constructionSiteRepository, never()).save(any());
   }
 
   /**
@@ -152,7 +157,7 @@ class BuildingDeleteTest {
    */
   private Village villageOwnedBy(String username) {
     User owner = mock(User.class);
-    when(owner.getUsername()).thenReturn(username);
+    lenient().when(owner.getUsername()).thenReturn(username);
     return new Village(0, 0, owner);
   }
 }

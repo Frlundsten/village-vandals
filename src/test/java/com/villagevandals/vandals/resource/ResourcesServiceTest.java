@@ -181,6 +181,90 @@ class ResourcesServiceTest {
     assertThat(result.get(IRON)).isGreaterThan(100);
   }
 
+  // --- elapsed-time accounting ---
+
+  @Test
+  void refreshAndPersist_subSecondElapsed_creditsNothingAndLeavesTheClockUntouched() {
+    Instant lastUpdate = Instant.now().minusMillis(400);
+    Village village = villageWithWoodRate(3600, lastUpdate); // 1 wood per second
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    ResourceStorage result = service.refreshAndPersist(1L);
+
+    assertThat(result.get(WOOD)).isEqualTo(100);
+    assertThat(village.getStorage().getLastUpdate())
+        .as("the unaccounted 0.4s must carry forward, not be thrown away")
+        .isEqualTo(lastUpdate);
+  }
+
+  @Test
+  void refreshAndPersist_oneAndAHalfSeconds_creditsOneSecondAndCarriesTheRemainder() {
+    Instant lastUpdate = Instant.now().minusMillis(1500);
+    Village village = villageWithWoodRate(3600, lastUpdate); // 1 wood per second
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    ResourceStorage result = service.refreshAndPersist(1L);
+
+    assertThat(result.get(WOOD)).isEqualTo(101);
+    assertThat(village.getStorage().getLastUpdate())
+        .as("lastUpdate advances by exactly the credited second, leaving 0.5s pending")
+        .isEqualTo(lastUpdate.plusSeconds(1));
+  }
+
+  @Test
+  void refreshAndPersist_twoSnapshotsInsideOneSecond_stillCreditTheFullElapsedTime() {
+    Instant lastUpdate = Instant.now().minusSeconds(3);
+    Village village = villageWithWoodRate(3600, lastUpdate);
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    service.refreshAndPersist(1L);
+    ResourceStorage second = service.refreshAndPersist(1L);
+
+    // 3 whole seconds of production, regardless of the two calls landing in the same second.
+    assertThat(second.get(WOOD)).isEqualTo(103);
+  }
+
+  @Test
+  void getCurrentResourceStorage_lastUpdateInTheFuture_neverReducesStoredAmounts() {
+    Village village = villageWithAllRates(18000, Instant.now().plus(1, ChronoUnit.HOURS));
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    ResourceStorage result = service.getCurrentResourceStorage(1L);
+
+    assertThat(result.get(WOOD)).isEqualTo(100);
+    assertThat(result.get(FOOD)).isEqualTo(100);
+    assertThat(result.get(BRICKS)).isEqualTo(100);
+    assertThat(result.get(IRON)).isEqualTo(100);
+  }
+
+  @Test
+  void getCurrentResourceStorage_veryLongIdlePeriod_saturatesInsteadOfOverflowing() {
+    // 100 years at 1,000,000/hour is far past Integer.MAX_VALUE.
+    Village village =
+        villageWithAllRates(1_000_000, Instant.now().minus(36500, ChronoUnit.DAYS));
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    ResourceStorage result = service.getCurrentResourceStorage(1L);
+
+    assertThat(result.get(WOOD)).isEqualTo(Integer.MAX_VALUE);
+    assertThat(result.get(FOOD)).isNotNegative();
+    assertThat(result.get(BRICKS)).isNotNegative();
+    assertThat(result.get(IRON)).isNotNegative();
+  }
+
+  @Test
+  void deductResources_negativeCost_throwsAndCreditsNothing() {
+    Village village = villageWithProductionRate(0, Instant.now());
+    when(repository.findById(1L)).thenReturn(Optional.of(village));
+
+    assertThatThrownBy(() -> service.deductResources(1L, Map.of(WOOD, -1_794_967_296)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("negative");
+
+    assertThat(village.getStorage().get(WOOD)).isEqualTo(100);
+    verify(repository, never()).save(any(Village.class));
+  }
+
   private Village villageWithAllRates(int rate, Instant lastUpdate) {
     ResourceStorage storage = new ResourceStorage();
     storage.setLastUpdate(lastUpdate);

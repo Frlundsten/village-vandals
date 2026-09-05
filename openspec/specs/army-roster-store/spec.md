@@ -31,13 +31,24 @@ The system SHALL provide a Pinia store (`useArmyStore`) with a `roster` reactive
 - **AND** displays the units currently in `armyStore.roster`
 
 ### Requirement: Training completion triggers roster refresh
-When the client-side countdown for a training order reaches zero, the system SHALL call `armyStore.refresh(villageId)` to promote completed orders to units on the backend and update the reactive roster. The refresh SHALL be fire-and-forget — errors SHALL be caught and discarded without affecting the queue display.
+When the client-side countdown for a training order reaches zero, the system SHALL call `armyStore.refresh(villageId)` to promote completed orders to units on the backend and update the reactive roster. This trigger SHALL be owned by `useTrainingStore`, whose countdown runs independently of any mounted component, so the refresh occurs whether or not the building card is open and whichever route the player is on. The refresh SHALL fire once per completion event, including for every subsequent order in a multi-order queue. The refresh SHALL be fire-and-forget — errors SHALL be caught and discarded without affecting the queue display.
 
 #### Scenario: Roster updates when countdown expires
 - **WHEN** the training queue countdown for the first order reaches zero
 - **THEN** `armyStore.refresh(villageId)` is called exactly once
 - **AND** `armyStore.roster` is updated with the newly promoted unit
 - **AND** both `Home.vue` mini-panel and `ArmyView.vue` reflect the new count
+
+#### Scenario: Roster updates with the building card closed
+- **GIVEN** a training order is pending and the building card has been closed
+- **WHEN** the order's countdown reaches zero
+- **THEN** `armyStore.refresh(villageId)` is still called
+- **AND** `armyStore.roster` includes the newly trained unit
+
+#### Scenario: Every order in a queue triggers a refresh
+- **GIVEN** a queue of three orders
+- **WHEN** each order's countdown reaches zero in turn
+- **THEN** `armyStore.refresh(villageId)` is called once per completed order
 
 #### Scenario: Roster refresh error does not break the queue
 - **WHEN** `armyStore.refresh` throws a network error after an order expires

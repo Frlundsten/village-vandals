@@ -1,8 +1,17 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useResourceStore } from '@/stores/resources.js'
-import { useArmyStore } from '@/stores/army.js'
-import { fetchTrainingQueue, trainUnit } from '@/util/api/units.js'
+import { useTrainingStore } from '@/stores/training.js'
+import { trainUnit } from '@/util/api/units.js'
+import {
+  MAX_TRAINING_BATCH_SIZE,
+  MIN_TRAINING_BATCH_SIZE,
+  TRAINING_DURATION_MS,
+  VANDAL_DAMAGE,
+  VANDAL_FOOD_COST,
+  VANDAL_HP,
+  VANDAL_IRON_COST,
+} from '@/util/gameConfig.js'
 
 const props = defineProps({
   building: Object,
@@ -13,7 +22,7 @@ const props = defineProps({
 const emit = defineEmits(['upgrade', 'close'])
 
 const resourceStore = useResourceStore()
-const armyStore = useArmyStore()
+const trainingStore = useTrainingStore()
 
 const icons = {
   bricks: '🧱',
@@ -24,19 +33,12 @@ const icons = {
 
 const isBarrack = computed(() => props.building?.type === 'BARRACK')
 
-const VANDAL_FOOD_COST = 50
-const VANDAL_IRON_COST = 30
-const VANDAL_HP = 4
-const VANDAL_DAMAGE = 1
-const TRAINING_DURATION_MS = 5000
-const MIN_TRAIN_QUANTITY = 0
-const MAX_TRAIN_QUANTITY = 999
-
-const trainQuantity = ref(1)
+// Bounds come from the shared config so they cannot drift from what the server accepts.
+const trainQuantity = ref(MIN_TRAINING_BATCH_SIZE)
 
 function clampQuantity(value) {
-  const parsed = Number.isFinite(value) ? Math.trunc(value) : MIN_TRAIN_QUANTITY
-  return Math.min(MAX_TRAIN_QUANTITY, Math.max(MIN_TRAIN_QUANTITY, parsed))
+  const parsed = Number.isFinite(value) ? Math.trunc(value) : MIN_TRAINING_BATCH_SIZE
+  return Math.min(MAX_TRAINING_BATCH_SIZE, Math.max(MIN_TRAINING_BATCH_SIZE, parsed))
 }
 
 function setTrainQuantity(value) {
@@ -74,17 +76,20 @@ const nextProduction = computed(() => {
   return props.building.productionPerHour + ratePerLevel
 })
 
-const TICK_INTERVAL_MS = 100
-const trainingOrders = ref([])
-let countdownId = null
-let mountFetchCancelled = false
-let clockOffsetMs = 0
+// The queue and its countdown are owned by useTrainingStore, so training keeps
+// running when this card is closed. The card is a pure view over that state.
+const trainingOrders = computed(() =>
+  props.building?.buildingId == null
+    ? []
+    : trainingStore.ordersForBuilding(props.building.buildingId),
+)
 
 const trainError = ref(null)
 const training = ref(false)
 
-const activeOrder = computed(() => trainingOrders.value.find((o) => o.queuePosition === 1) ?? null)
-const pendingOrders = computed(() => trainingOrders.value.filter((o) => o.queuePosition > 1))
+// Orders arrive sorted by finishesAt, so this building's next completion is first.
+const activeOrder = computed(() => trainingOrders.value[0] ?? null)
+const pendingOrders = computed(() => trainingOrders.value.slice(1))
 
 const activeOrderDurationMs = computed(() => {
   if (!activeOrder.value) return TRAINING_DURATION_MS
@@ -101,68 +106,17 @@ const activeCountdown = computed(() => {
   return (activeOrder.value.remainingMs / 1000).toFixed(1) + 's'
 })
 
-function updateClockOffset(orders) {
-  if (orders.length > 0 && orders[0].serverTime) {
-    clockOffsetMs = new Date(orders[0].serverTime).getTime() - Date.now()
-  }
-}
-
-function enrichOrder(order) {
-  return {
-    ...order,
-    remainingMs: Math.max(0, new Date(order.finishesAt).getTime() - (Date.now() + clockOffsetMs)),
-  }
-}
-
-function startCountdown() {
-  if (countdownId !== null) return
-  countdownId = setInterval(() => {
-    const now = Date.now() + clockOffsetMs
-    trainingOrders.value = trainingOrders.value.map((o) => ({
-      ...o,
-      remainingMs: Math.max(0, new Date(o.finishesAt).getTime() - now),
-    }))
-    const first = trainingOrders.value.find((o) => o.queuePosition === 1)
-    if (first && first.remainingMs <= 0) {
-      trainingOrders.value = trainingOrders.value.filter((o) => o.remainingMs > 0)
-      if (trainingOrders.value.length === 0) stopCountdown()
-      armyStore.refresh(props.villageId).catch(() => {})
-    }
-  }, TICK_INTERVAL_MS)
-}
-
-function stopCountdown() {
-  if (countdownId !== null) {
-    clearInterval(countdownId)
-    countdownId = null
-  }
-}
-
-onMounted(async () => {
-  try {
-    const serverQueue = await fetchTrainingQueue(props.villageId)
-    if (!mountFetchCancelled && serverQueue.length > 0) {
-      updateClockOffset(serverQueue)
-      trainingOrders.value = serverQueue.map(enrichOrder)
-      startCountdown()
-    }
-  } catch {}
-})
-
-onUnmounted(() => {
-  stopCountdown()
-})
-
 async function handleTrainVandal() {
   trainError.value = null
   training.value = true
   try {
-    const updatedQueue = await trainUnit(props.villageId, props.building.buildingId, trainQuantity.value)
+    const updatedQueue = await trainUnit(
+      props.villageId,
+      props.building.buildingId,
+      trainQuantity.value,
+    )
     if (Array.isArray(updatedQueue) && updatedQueue.length > 0) {
-      mountFetchCancelled = true
-      updateClockOffset(updatedQueue)
-      trainingOrders.value = updatedQueue.map(enrichOrder)
-      startCountdown()
+      trainingStore.setOrders(updatedQueue)
     }
     await resourceStore.refresh(props.villageId)
   } catch (err) {
@@ -217,8 +171,8 @@ async function handleTrainVandal() {
                 type="number"
                 class="input input-sm input-bordered w-20 text-center"
                 data-testid="train-quantity-input"
-                :min="MIN_TRAIN_QUANTITY"
-                :max="MAX_TRAIN_QUANTITY"
+                :min="MIN_TRAINING_BATCH_SIZE"
+                :max="MAX_TRAINING_BATCH_SIZE"
                 :value="trainQuantity"
                 @change="setTrainQuantity(Number($event.target.value))"
               />

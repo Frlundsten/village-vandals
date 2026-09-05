@@ -1,5 +1,6 @@
 package com.villagevandals.vandals.unit;
 
+import java.security.Principal;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +25,14 @@ public class UnitController {
   }
 
   @PostMapping("/train")
-  public ResponseEntity<?> trainUnit(@RequestBody TrainRequestDTO dto) {
+  public ResponseEntity<?> trainUnit(@RequestBody TrainRequestDTO dto, Principal principal) {
     LOG.debug(
         "Training {} unit(s) for village {} at building {}",
         dto.quantity(), dto.villageId(), dto.buildingId());
     try {
       List<TrainingOrderDTO> queue =
-          unitService.trainVandal(dto.villageId(), dto.buildingId(), dto.quantity());
+          unitService.trainVandal(
+              dto.villageId(), dto.buildingId(), dto.quantity(), principal.getName());
       return ResponseEntity.ok(queue);
     } catch (IllegalArgumentException e) {
       LOG.warn("Train unit failed: {}", e.getMessage());
@@ -39,14 +41,16 @@ public class UnitController {
   }
 
   @GetMapping("/training")
-  public ResponseEntity<List<TrainingOrderDTO>> getTrainingQueue(@RequestParam long villageId) {
+  public ResponseEntity<List<TrainingOrderDTO>> getTrainingQueue(
+      @RequestParam long villageId, Principal principal) {
     LOG.debug("Fetching training queue for village {}", villageId);
-    return ResponseEntity.ok(unitService.getTrainingQueue(villageId));
+    return ResponseEntity.ok(unitService.getTrainingQueue(villageId, principal.getName()));
   }
 
   @GetMapping
-  public ResponseEntity<List<UnitRosterDTO>> getRoster(@RequestParam long villageId) {
+  public ResponseEntity<List<UnitRosterDTO>> getRoster(
+      @RequestParam long villageId, Principal principal) {
     LOG.debug("Fetching unit roster for village {}", villageId);
-    return ResponseEntity.ok(unitService.getRoster(villageId));
+    return ResponseEntity.ok(unitService.getRoster(villageId, principal.getName()));
   }
 }

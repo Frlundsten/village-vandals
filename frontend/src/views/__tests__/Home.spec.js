@@ -5,6 +5,8 @@ import { nextTick } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import Home from '../Home.vue'
 import { useArmyStore } from '@/stores/army.js'
+import { useResourceStore } from '@/stores/resources.js'
+import { useTrainingStore } from '@/stores/training.js'
 import * as unitsApi from '@/util/api/units.js'
 import * as apiModule from '@/util/api/api.js'
 
@@ -27,7 +29,8 @@ vi.mock('@/components/Avatar.vue', () => ({
 }))
 
 const mockVillageResponse = {
-  villages: [{ id: 1, name: 'Test Village' }],
+  username: 'alice',
+  villages: [{ id: 1, xCoordinate: 4, yCoordinate: 7 }],
 }
 
 function makeRouter(currentPath = '/') {
@@ -131,5 +134,149 @@ describe('Home — army mini-panel', () => {
     expect(panel.exists()).toBe(true)
     expect(panel.text()).toContain('VANDAL')
     expect(panel.text()).toContain('× 5')
+  })
+})
+
+describe('Home — header and session state', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    localStorage.setItem('villageId', '1')
+    localStorage.setItem('jwt_token', 'fake-token')
+    apiModule.apiRequest.mockResolvedValue(mockVillageResponse)
+    unitsApi.fetchRoster.mockResolvedValue([])
+    unitsApi.fetchTrainingQueue.mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('jwt_token')
+    localStorage.removeItem('villageId')
+  })
+
+  it('shows the authenticated username returned by /user', async () => {
+    const wrapper = await mountHome('/')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('alice')
+  })
+
+  it('identifies the current village by its coordinates', async () => {
+    const wrapper = await mountHome('/')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('4')
+    expect(wrapper.text()).toContain('7')
+  })
+
+  it('falls back to the stored village id while the current village id is still 0', async () => {
+    // /user has not resolved yet, so currentVillage.id is its initial 0 — `??` would keep
+    // that 0 and route the player to /village/0.
+    apiModule.apiRequest.mockReturnValue(new Promise(() => {}))
+    localStorage.setItem('villageId', '99')
+
+    const wrapper = await mountHome('/')
+    await nextTick()
+
+    const villageLink = wrapper.findAll('a').find((a) => a.text().includes('Village'))
+    expect(villageLink.attributes('href')).toContain('99')
+  })
+
+  it('does not throw when no village id is known at all', async () => {
+    apiModule.apiRequest.mockReturnValue(new Promise(() => {}))
+    localStorage.removeItem('villageId')
+
+    const wrapper = await mountHome('/')
+    await nextTick()
+
+    const villageLink = wrapper.findAll('a').find((a) => a.text().includes('Village'))
+    await villageLink.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.exists()).toBe(true)
+  })
+
+  it('renders unimplemented menu entries as unavailable instead of wiring a missing handler', async () => {
+    const wrapper = await mountHome('/')
+    await flushPromises()
+
+    const reports = wrapper.findAll('li').find((li) => li.text().includes('Reports'))
+    expect(reports.html()).toContain('menu-disabled')
+    await expect(reports.find('a').trigger('click')).resolves.not.toThrow()
+  })
+
+  it('resets the army roster and resource totals on logout', async () => {
+    unitsApi.fetchRoster.mockResolvedValue([{ unitType: 'VANDAL', count: 3, hp: 4, damage: 1 }])
+
+    const wrapper = await mountHome('/')
+    await flushPromises()
+
+    const armyStore = useArmyStore()
+    const resourceStore = useResourceStore()
+    resourceStore.food = 500
+    expect(armyStore.roster).toHaveLength(1)
+
+    await wrapper.find('[data-testid="logout-button"]').trigger('click')
+    await flushPromises()
+
+    expect(armyStore.roster).toEqual([])
+    expect(resourceStore.food).toBe(0)
+  })
+
+  it('a failing roster fetch does not stop the training store from hydrating', async () => {
+    unitsApi.fetchRoster.mockRejectedValue(new Error('boom'))
+
+    await mountHome('/')
+    await flushPromises()
+
+    expect(unitsApi.fetchTrainingQueue).toHaveBeenCalledWith(1)
+  })
+})
+
+describe('Home — training store session wiring', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    localStorage.setItem('villageId', '1')
+    localStorage.setItem('jwt_token', 'fake-token')
+    apiModule.apiRequest.mockResolvedValue(mockVillageResponse)
+    unitsApi.fetchRoster.mockResolvedValue([])
+    unitsApi.fetchTrainingQueue.mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    localStorage.removeItem('jwt_token')
+    localStorage.removeItem('villageId')
+  })
+
+  it('hydrates the training store with the current village once it is loaded', async () => {
+    await mountHome('/')
+    await flushPromises()
+
+    // Home is the authenticated layout, so hydrating here keeps the countdown
+    // alive for the whole session regardless of the active route.
+    expect(unitsApi.fetchTrainingQueue).toHaveBeenCalledWith(1)
+  })
+
+  it('stops the training store on logout so nothing leaks into the next session', async () => {
+    const wrapper = await mountHome('/')
+    await flushPromises()
+
+    const trainingStore = useTrainingStore()
+    trainingStore.setOrders([
+      {
+        id: 1,
+        unitType: 'VANDAL',
+        buildingId: 10,
+        quantity: 1,
+        queuePosition: 1,
+        finishesAt: new Date(Date.now() + 60000).toISOString(),
+      },
+    ])
+    expect(trainingStore.orders).toHaveLength(1)
+
+    await wrapper.find('[data-testid="logout-button"]').trigger('click')
+    await flushPromises()
+
+    expect(trainingStore.orders).toEqual([])
   })
 })
